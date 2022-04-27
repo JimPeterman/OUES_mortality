@@ -179,9 +179,9 @@ for(p in 1:length(group_type)){
           # Determine whether significance needs to be added (different symbol for different sig note).
           sig_sym <- ifelse((round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5) < 0.05), "†", "")
           concordance_summary[m,"VO2 Concordance"] <- 
-            str_trim(paste(sprintf("%.3f", round(summary(get(paste(VO2_models)[m]))$concordance["C"], 3)), sig_sym))
+            sprintf("%.3f", round(summary(get(paste(VO2_models)[m]))$concordance["C"], 3))
           concordance_summary[m, paste(var_int[i], "Concordance")] <- 
-            sprintf("%.3f", round(summary(get(paste(int_model)[m]))$concordance["C"], 3))
+            str_trim(paste(sprintf("%.3f", round(summary(get(paste(int_model)[m]))$concordance["C"], 3)), sig_sym))
           # AIC - model fits to describe findings more.
           concordance_summary[m,"VO2 AIC"] <- sprintf("%.1f", round(AIC(get(paste(VO2_models)[m])),1))
           concordance_summary[m, paste(var_int[i], "AIC")] <- sprintf("%.1f", round(AIC(get(paste(int_model)[m])),1))
@@ -248,7 +248,7 @@ for(p in 1:length(group_type)){
         concordance_summary[12,3] <- round(cor.test(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson")$p.value, 5)
         
         # Add in the description of the significant symbols.
-        concordance_summary[11, 6] <- paste("†: significantly different from", var_int[i])
+        concordance_summary[11, 6] <- paste("†: significantly different from VO2 model")
         concordance_summary[11, 7] <- paste("‡: combined model significantly different")
         
         assign(paste("concordance", group_type[p], var_int[i], death_var[k], sep = "_"), concordance_summary)
@@ -340,7 +340,7 @@ for(p in 1:length(group_type)){
         # Create a summary of the Cox analysis.
         models <- c("res_cox_uni", "res_cox_multi_2", "res_cox_multi_3", "res_cox_multi_4",
                     "res_cox_uni_VO2", "res_cox_multi_2_VO2", "res_cox_multi_3_VO2")
-        temp_summary <- data.frame(c("Univariate", "Age, sex, test year", 
+        temp_summary <- data.frame(c("Univariate", "Age, test year", 
                                      "Age, test year, obesity, hypertension, dyslipidemia, diabetes, PA, smoking",
                                      "Age, test year, obesity, hypertension, dyslipidemia, diabetes, PA, smoking, VO2max"))
         colnames(temp_summary)[1] <- paste(var_int[i], death_var[k], sep = "_")
@@ -393,8 +393,8 @@ for(p in 1:length(group_type)){
         int_model <- c("res_cox_uni", "res_cox_multi_2", "res_cox_multi_3")
         VO2_models <- c("res_cox_uni_VO2", "res_cox_multi_2_VO2", "res_cox_multi_3_VO2")
         
-        concordance_summary <- data.frame("Model_Comparison" = c("Univariate", "Age, Sex, Test Year", 
-                                                                 "Age, Sex, Testing Year, and Risk Factors","","",
+        concordance_summary <- data.frame("Model_Comparison" = c("Univariate", "Age, Test Year", 
+                                                                 "Age, Testing Year, and Risk Factors","","",
                                                                  paste("Adding", var_int[i], "to VO2 Model"),
                                                                  "","", paste("Adding VO2 to", var_int[i], "Model"),
                                                                  "","","Correlations"))
@@ -418,9 +418,9 @@ for(p in 1:length(group_type)){
           # Determine whether significance needs to be added (different symbol for different sig note).
           sig_sym <- ifelse((round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5) < 0.05), "†", "")
           concordance_summary[m,"VO2 Concordance"] <- 
-            str_trim(paste(sprintf("%.3f", round(summary(get(paste(VO2_models)[m]))$concordance["C"], 3)), sig_sym))
-          concordance_summary[m,paste(var_int[i], "Concordance")] <- 
-            sprintf("%.3f", round(summary(get(paste(int_model)[m]))$concordance["C"], 3))
+            sprintf("%.3f", round(summary(get(paste(VO2_models)[m]))$concordance["C"], 3))
+          concordance_summary[m, paste(var_int[i], "Concordance")] <- 
+            str_trim(paste(sprintf("%.3f", round(summary(get(paste(int_model)[m]))$concordance["C"], 3)), sig_sym))
           # AIC - model fits to describe findings more.
           concordance_summary[m,"VO2 AIC"] <- sprintf("%.1f", round(AIC(get(paste(VO2_models)[m])),1))
           concordance_summary[m,paste(var_int[i], "AIC")] <- sprintf("%.1f", round(AIC(get(paste(int_model)[m])),1))
@@ -486,7 +486,7 @@ for(p in 1:length(group_type)){
         concordance_summary[12,3] <- round(cor.test(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson")$p.value, 5)
         
         # Add in the description of the significant symbols.
-        concordance_summary[11, 6] <- paste("†: significantly different from", var_int[i])
+        concordance_summary[11, 6] <- paste("†: significantly different from VO2 model")
         concordance_summary[11, 7] <- paste("‡: combined model significantly different")
         
         assign(paste("concordance", group_type[p], var_int[i], death_var[k], sep = "_"), concordance_summary)
@@ -581,8 +581,9 @@ plot(cox.zph(res_cox_uni_female_oues_cancer)[1])
 ###############################################################################
 
 # Vector which lists all of the variables you want summarized.
-variables <- c("age", "bmi", "waist", 
-               "OUES", "VO2_rel", "FRIEND_pct", "max_hr", "max_rer",
+variables <- c("age", "bmi", "waist", "bsa",
+               "OUES", "OUES_norm",
+               "VO2_rel", "FRIEND_pct", "max_hr", "max_rer",
                "follow_up_yrs")
 
 group_type <- c("all", "Male", "Female")
