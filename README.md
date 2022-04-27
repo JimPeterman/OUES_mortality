@@ -1,1 +1,4 @@
-# OUES_mortality
+# Oxygen Uptake Efficiency Slope (OUES) as a Predictor of Mortality Risk
+
+## Summary:
+The American Heart Association recommends that cardiorespiratory fitness (VO<sub>2max</sub>) be regularly assessed alongside other traditional risk factors (e.g., blood pressure). The determination of VO<sub>2max</sub> though, requires that a participant perform a maximal effort, which can be unsafe or uncomfortable for a participant. Other variables collected during an exercise test may also have clinical utility in predicting health outcomes, without the downsides associated with measuring VO<sub>2max</sub>. One such variable is the oxygen uptake efficiency slope (OUES). **This project utilizes data from the BALL ST cohort to examine the prognositic potential of OUES by examining whether OUES is predictive of mortality in apparently healthy individuals.**
