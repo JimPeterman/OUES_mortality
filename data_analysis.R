@@ -6,7 +6,7 @@ library(survival)
 library(survminer)
 library(stringr)
 
-data <- read_xlsx(here::here("../CLEANED_OUES_dataset_4_27_2022.xlsx"))
+data <- read_xlsx(here::here("../CLEANED_OUES_dataset_5_2_2022.xlsx"))
 
 #######################################################################
 # Cox proportional hazards and Concordance tests.
@@ -15,7 +15,8 @@ data <- read_xlsx(here::here("../CLEANED_OUES_dataset_4_27_2022.xlsx"))
 group_type <- c("all", "Male", "Female")
 death_var <- c("all", "Cancer", "CVD")
 # death_var <- c("all")
-var_int <- c("OUES", "OUES_norm")
+var_int <- c("OUES", "OUES_norm", "OUES_tertile")
+
 
 # Start with a quick check for colinearity of features using VIF (<5 is ok).
 for(i in 1:(length(var_int)+1)){

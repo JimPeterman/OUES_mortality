@@ -93,6 +93,16 @@ data <- mutate(data, FRIEND_pct = FRIENDpercentile(VO2 = VO2_rel, age = age,
 data <- mutate(data, FRIEND_grp = ifelse(data$FRIEND_pct <= 33, "low fit", 
                                          ifelse(data$FRIEND_pct >= 67, "high fit", "avg fit")))
 
+# Create tertile groups for OUES.
+data <- data %>%
+  mutate(OUES_tertile = ntile(OUES, 3)) %>%
+  mutate(OUES_tertile = if_else(OUES_tertile == 1, "Good", if_else(OUES_tertile == 2, "Ok", "Bad"))) 
+
+data <- data %>%
+  mutate(OUES_norm_tertile = ntile(OUES_norm, 3)) %>%
+  mutate(OUES_norm_tertile = if_else(OUES_norm_tertile == 1, "Good", 
+                                     if_else(OUES_norm_tertile == 2, "Ok", "Bad"))) 
+
 ###########################################################################################
 # Final filtering and dataset creation.
 ###########################################################################################
@@ -116,5 +126,5 @@ data <- data %>%
 # Save file.
 ###########################################################################################
 
-write_xlsx(data, here::here("../CLEANED_OUES_dataset_4_27_2022_.xlsx"))
+write_xlsx(data, here::here("../CLEANED_OUES_dataset_5_2_2022_.xlsx"))
 
