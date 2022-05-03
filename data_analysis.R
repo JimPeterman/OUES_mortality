@@ -583,7 +583,7 @@ plot(cox.zph(res_cox_uni_female_oues_cancer)[1])
 
 # Vector which lists all of the variables you want summarized.
 variables <- c("age", "bmi", "waist", "bsa",
-               "OUES", "OUES_norm", "OUES_50", "OUES_75",
+               "OUES", "OUES_50", "OUES_75","OUES_norm",
                "VO2_rel", "FRIEND_pct", "max_hr", "max_rer",
                "follow_up_yrs")
 
@@ -629,7 +629,9 @@ for(k in 1:length(death_var)){
       # Add in significance symbol if t-test p-value <0.05.
       sig_sym <- ifelse((group_type[s] == "Female" & df_summary[j, "sex_tTest"] < 0.05), "*", "")
       
-      if(variables[j] == "VO2_abs" | variables[j] == "max_rer"){
+      if(variables[j] == "VO2_abs" | variables[j] == "max_rer" |
+         variables[j] == "OUES" | variables[j] == "OUES_50" | variables[j] == "OUES_75" |
+         variables[j] == "OUES_norm"){
         df_summary[j, paste(group_type[s], "mean_sd", sep="_")] <- 
           str_trim(paste(sprintf("%.2f", round(mean(temp_df[[variables[j]]], na.rm=T),2)), "±", 
                 sprintf("%.2f", round(sd(temp_df[[variables[j]]], na.rm=T), 2)), sig_sym))
@@ -708,7 +710,9 @@ for(k in 1:length(death_var)){
         if (m == 1){
           df_mor <- filter(df_mor, mortality_status == 0)
           
-          if(variables[j] == "VO2_abs" | variables[j] == "max_rer"){
+          if(variables[j] == "VO2_abs" | variables[j] == "max_rer" |
+             variables[j] == "OUES" | variables[j] == "OUES_50" | variables[j] == "OUES_75" |
+             variables[j] == "OUES_norm"){
             df_summary[j,paste(group_type[s], "mean_sd_Alive", sep="_")] <-
               paste(sprintf("%.2f", round(mean(df_mor[[variables[j]]], na.rm=T),2)), "±",
                     sprintf("%.2f", round(sd(df_mor[[variables[j]]], na.rm=T), 2)))
@@ -723,7 +727,9 @@ for(k in 1:length(death_var)){
           # Decide whether a significance symbol needs to be added.
           sig_sym <- ifelse(sig_t_test, "*", "")
           
-          if(variables[j] == "VO2_abs" | variables[j] == "max_rer"){
+          if(variables[j] == "VO2_abs" | variables[j] == "max_rer" |
+             variables[j] == "OUES" | variables[j] == "OUES_50" | variables[j] == "OUES_75" |
+             variables[j] == "OUES_norm"){
             df_summary[j,paste(group_type[s], "mean_sd_Deceased", sep="_")] <-
               str_trim(paste(sprintf("%.2f", round(mean(df_mor[[variables[j]]], na.rm=T),2)), "±",
                     sprintf("%.2f", round(sd(df_mor[[variables[j]]], na.rm=T), 2)), sig_sym))
@@ -776,6 +782,45 @@ for(k in 1:length(death_var)){
   # Rename summaries.
   assign(paste("summary_data", death_var[k], sep="_"), df_summary)
   rm(temp_df, df_summary, df_mor)
+}
+
+###############################################################################
+# Comparison of OUES values (full test, 50%, and 75% of test time).
+###############################################################################
+# library(lme4)
+# library(lmerTest)
+# library(tidyr)
+
+death_var <- c("all", "Cancer", "CVD")
+
+for(i in 1:length(death_var)){
+  # Get the correct mortality grouping.
+  if(death_var[k] == "all"){
+    temp_mor_df <- data
+  } else {
+    to_keep <- c(NA, death_var[k])
+    temp_mor_df <- data[(data$mortality_grouping %in% to_keep),]
+    rm(to_keep)    
+  }
+  # Convert from wide to long format.
+  temp_df <- tidyr::gather(temp_mor_df, measure, value, c(OUES, OUES_50, OUES_75))
+  temp_df <- select(temp_df, ID, measure, value)
+  
+  # Linear mixed model (with subsequent post hocs).
+  model <- lme4::lmer(value~measure + (1|ID), data = temp_df)
+  post_hocs <- multcomp::glht(model, linfct = multcomp::mcp(measure = "Tukey"))
+  
+  temp_summary <- data.frame(round(summary(post_hocs)$test$coefficients, 3),
+                             round(summary(post_hocs)$test$pvalues, 5))
+  colnames(temp_summary) <- c("coefficients", "p_val")
+  
+  temp_summary <- temp_summary %>%
+    mutate(coefficients = ifelse(p_val < 0.05, paste(coefficients, "*"), coefficients))
+  
+  # Rename summaries.
+  temp_summary <- tibble::rownames_to_column(temp_summary, "comparison")
+  assign(paste("OUES_comp", death_var[i], sep="_"), temp_summary)
+  rm(temp_df, temp_summary, temp_mor_df)
 }
 
 
@@ -974,6 +1019,7 @@ for(i in 1:length(death_var)){
 
   y <- list("characteristics" = get(paste("summary_data_", death_var[i], sep="")),
             "risk_and_ethnicity" = get(paste("risk_ethnicity_data_", death_var[i], sep="")),
+            "OUES_comparisons" = get(paste("OUES_comp_", death_var[i], sep="")),
             
             "All_Cox" = get(paste("cox_all_OUES_", death_var[i], sep="")),
             "All_Concord" = get(paste("concordance_all_OUES_", death_var[i], sep="")),
