@@ -103,12 +103,176 @@ data <- data %>%
   mutate(OUES_norm_tertile = if_else(OUES_norm_tertile == 1, "Good", 
                                      if_else(OUES_norm_tertile == 2, "Ok", "Bad"))) 
 
+
+#####################################################################
+# Add the submaximal OUES data from the "minute" dataset.
+#####################################################################
+
+# For the MINUTE dataset:
+# Searched for something (*) in rel VO2 column of minute columns in FileMaker.
+# Data downloaded using the "Export Minutes" button (10/4/2021).
+data_min_all <- read_excel(here::here("../FileMaker Minutes Download_10_13_2021.xlsx"),
+                           na = "?")
+
+# Rename the two key column labels used to sort.
+data_min_all <- data_min_all %>% 
+  rename("ID"="Person ID", 
+         "testNumber"="Test Number")
+
+# Create vectors of column labels.
+col_vo2 <- character(length = 30)
+col_ve <- character(length = 30)
+col_ve_calc <- character(length = 30)
+for(i in 1:30){
+  col_vo2[i] <- paste("VO2", i, sep="")
+  col_ve[i] <- paste("VE BTPS", i, sep="")
+  col_ve_calc[i] <- paste("VE BTPS_calc", i, sep="")
+}
+col_int <- c(col_vo2, col_ve, col_ve_calc)
+
+data_min <- select(data_min_all, ID, testNumber, all_of(col_int))
+
+
+# Drop missing ID or test number (needed for matching).
+data_min <- filter(data_min, !(is.na(ID)), !(is.na(testNumber)))
+
+# Convert columns to numeric.
+data_min <- data_min %>% 
+  mutate_at(.vars = col_int,
+            .funs = list(~replace(.,grepl("n/a", ., ignore.case = T),NA)))
+data_min <- data_min %>% 
+  mutate_at(.vars = col_int,
+            .funs = list(~replace(.,grepl("n", ., ignore.case = T),NA)))
+# Should all be fixed now in FileMaker.
+data_min$`VE BTPS1`[data_min$`VE BTPS1` == "22..17"] <- "22.17"
+data_min$`VE BTPS3`[data_min$`VE BTPS3` == "\\"] <- NA
+data_min$`VE BTPS4`[data_min$`VE BTPS4` == "b/a"] <- NA
+data_min$`VE BTPS5`[data_min$`VE BTPS5` == "44q"] <- "44"
+data_min$`VE BTPS6`[data_min$`VE BTPS6` == "39..52"] <- "39.52"
+data_min$`VE BTPS7`[data_min$`VE BTPS7` == "58..88"] <- "58.88"
+data_min$`VE BTPS11`[data_min$`VE BTPS11` == "93..5"] <- "93.5"
+
+data_min[] <- lapply(data_min, as.numeric) 
+
+#####################################################################
+# Add in the calculated OUES (using data from 50% and 75% of total test time).
+#####################################################################
+
+# Add columns to write to in the MAIN dataset.
+data <- mutate(data, OUES_50 = NA)
+data <- mutate(data, OUES_75 = NA)
+# Did "100%" to compare FM calculation but only downloaded 30min so that may not include all data points.
+# After running the analysis, looks real similar between 100% calc and FileMaker calc.
+data <- mutate(data, OUES_100 = NA)
+
+# Write in the OUES values from the minute date. 
+for(i in 1:nrow(data_min)){
+  temp_id <- paste(data_min[i, "ID"])
+  temp_test_num <- paste(data_min[i, "testNumber"])
+  
+  # Determine if the ID and test are in the main dataset.
+  # And if the test is in main dataset, filter to just that.
+  if ((as.numeric(temp_id) %in% data$ID)){
+    temp_df <- filter(data, ID == as.numeric(temp_id))
+    if (as.numeric(temp_test_num) %in% temp_df$test_number){
+      temp_df <- filter(temp_df, test_number == as.numeric(temp_test_num))
+      # Get total test time from main dataset.
+      test_time_temp <- temp_df$test_time
+      
+      # Skip the test if there's no test time.
+      if (!is.na(test_time_temp)){
+        
+        # Need a temp df from minute dataset.
+        temp_min_df <- filter(data_min, ID == as.numeric(temp_id),
+                              testNumber == as.numeric(temp_test_num))
+        
+        ##############                      
+        # Now calculate OUES_50 (using 50% of total test time minute data).
+        ##############                      
+        # Will have to convert some values (like VO2rel to VO2abs).
+        wt <- temp_df$weight_SI
+        
+        # Create the vectors of VO2/VE for finding the slope (OUES) of 50% test time.
+        ve_vec_50 <- as.numeric(character(ceiling(test_time_temp/2)))
+        vo2_vec_50 <- as.numeric(character(ceiling(test_time_temp/2)))
+        for(j in 1:ceiling(test_time_temp/2)){
+          # Use VE BTPS unless it's missing, then use the calculated version.
+          if(is.na(temp_min_df[[col_ve[j]]])){
+            ve_vec_50[j] <- (log10(temp_min_df[[col_ve_calc[j]]]))
+          } else {
+            ve_vec_50[j] <- (log10(temp_min_df[[col_ve[j]]]))
+          }
+          vo2_vec_50[j] <- as.numeric(temp_min_df[[col_vo2[j]]] * wt /1000)
+        }
+        # Calculate the OUES (slope) if both vectors are not only NA.
+        if(all(is.na(ve_vec_50)) == FALSE & all(is.na(vo2_vec_50)) == FALSE){
+          # lm is called as lm(y~x).
+          slope = lm(vo2_vec_50 ~ ve_vec_50)$coefficients[2]
+          data$OUES_50[(data$ID == as.numeric(temp_id)) &
+                         (data$test_number == as.numeric(temp_test_num))] <- round(slope, 2)
+        }
+        
+        
+        ##############                      
+        # Now calculate OUES_75 (using 75% of total test time minute data).
+        ############## 
+        ve_vec_75 <- as.numeric(character(ceiling(test_time_temp * 0.75)))
+        vo2_vec_75 <- as.numeric(character(ceiling(test_time_temp * 0.75)))
+        for(j in 1:ceiling(test_time_temp * 0.75)){
+          # Use VE BTPS unless it's missing, then use the calculated version.
+          if(is.na(temp_min_df[[col_ve[j]]])){
+            ve_vec_75[j] <- (log10(temp_min_df[[col_ve_calc[j]]]))
+          } else {
+            ve_vec_75[j] <- (log10(temp_min_df[[col_ve[j]]]))
+          }
+          vo2_vec_75[j] <- as.numeric(temp_min_df[[col_vo2[j]]] * wt /1000)
+        }
+        # Calculate the OUES (slope) if both vectors are not only NA.
+        if(all(is.na(ve_vec_75)) == FALSE & all(is.na(vo2_vec_75)) == FALSE){
+          # lm is called as lm(y~x).
+          slope = lm(vo2_vec_75 ~ ve_vec_75)$coefficients[2]
+          data$OUES_75[(data$ID == as.numeric(temp_id)) &
+                         (data$test_number == as.numeric(temp_test_num))] <- round(slope, 2)
+        }
+        
+        ##############                      
+        # Now calculate OUES_100 (using 100% of total test time minute data).
+        # This is to check the OUES calculations in FileMaker.
+        ############## 
+        if(test_time_temp>30){
+          test_time_temp <- 30
+        }
+        ve_vec_100 <- as.numeric(character(floor(test_time_temp)))
+        vo2_vec_100 <- as.numeric(character(floor(test_time_temp)))
+        for(j in 1:floor(test_time_temp)){
+          # Use VE BTPS unless it's missing, then use the calculated version.
+          if(is.na(temp_min_df[[col_ve[j]]])){
+            ve_vec_100[j] <- (log10(temp_min_df[[col_ve_calc[j]]]))
+          } else {
+            ve_vec_100[j] <- (log10(temp_min_df[[col_ve[j]]]))
+          }
+          vo2_vec_100[j] <- as.numeric(temp_min_df[[col_vo2[j]]] * wt /1000)
+        }
+        # Calculate the OUES (slope) if both vectors are not only NA.
+        if(all(is.na(ve_vec_100)) == FALSE & all(is.na(vo2_vec_100)) == FALSE){
+          # lm is called as lm(y~x).
+          slope = lm(vo2_vec_100 ~ ve_vec_100)$coefficients[2]
+          data$OUES_100[(data$ID == as.numeric(temp_id)) &
+                          (data$test_number == as.numeric(temp_test_num))] <- round(slope, 2)
+        }
+      }
+    }
+  }
+}
+
 ###########################################################################################
 # Final filtering and dataset creation.
 ###########################################################################################
 
 # Drops those with OUES values outside of the "normal" range.
 data <- data[(data$OUES <= 6.0 & data$OUES >= 1.0),]
+data <- data[(data$OUES_50 <= 6.0 & data$OUES_50 >= 1.0),]
+data <- data[(data$OUES_75 <= 6.0 & data$OUES_75 >= 1.0),]
 
 # Drops those missing an OUES normalized to body surface area 
 # (n=1 but matters for concurrence tests).
@@ -126,5 +290,5 @@ data <- data %>%
 # Save file.
 ###########################################################################################
 
-write_xlsx(data, here::here("../CLEANED_OUES_dataset_5_2_2022_.xlsx"))
+write_xlsx(data, here::here("../CLEANED_OUES_dataset_5_3_2022_.xlsx"))
 

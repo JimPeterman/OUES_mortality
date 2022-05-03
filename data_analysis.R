@@ -6,7 +6,7 @@ library(survival)
 library(survminer)
 library(stringr)
 
-data <- read_xlsx(here::here("../CLEANED_OUES_dataset_5_2_2022.xlsx"))
+data <- read_xlsx(here::here("../CLEANED_OUES_dataset_5_3_2022.xlsx"))
 
 #######################################################################
 # Cox proportional hazards and Concordance tests.
@@ -15,7 +15,7 @@ data <- read_xlsx(here::here("../CLEANED_OUES_dataset_5_2_2022.xlsx"))
 group_type <- c("all", "Male", "Female")
 death_var <- c("all", "Cancer", "CVD")
 # death_var <- c("all")
-var_int <- c("OUES", "OUES_norm", "OUES_tertile")
+var_int <- c("OUES", "OUES_norm", "OUES_50", "OUES_75")
 
 
 # Start with a quick check for colinearity of features using VIF (<5 is ok).
@@ -583,7 +583,7 @@ plot(cox.zph(res_cox_uni_female_oues_cancer)[1])
 
 # Vector which lists all of the variables you want summarized.
 variables <- c("age", "bmi", "waist", "bsa",
-               "OUES", "OUES_norm",
+               "OUES", "OUES_norm", "OUES_50", "OUES_75",
                "VO2_rel", "FRIEND_pct", "max_hr", "max_rer",
                "follow_up_yrs")
 
@@ -987,10 +987,24 @@ for(i in 1:length(death_var)){
             "Male_Cox_norm" = get(paste("cox_Male_OUES_norm_", death_var[i], sep="")),
             "Male_Concord_norm" = get(paste("concordance_Male_OUES_norm_", death_var[i], sep="")),
             "Female_Cox_norm" = get(paste("cox_Female_OUES_norm_", death_var[i], sep="")),
-            "Female_Concord_norm" = get(paste("concordance_Female_OUES_norm_", death_var[i], sep=""))
+            "Female_Concord_norm" = get(paste("concordance_Female_OUES_norm_", death_var[i], sep="")),
+            
+            "All_Cox_50" = get(paste("cox_all_OUES_50_", death_var[i], sep="")),
+            "All_Concord_50" = get(paste("concordance_all_OUES_50_", death_var[i], sep="")),
+            "Male_Cox_50" = get(paste("cox_Male_OUES_50_", death_var[i], sep="")),
+            "Male_Concord_50" = get(paste("concordance_Male_OUES_50_", death_var[i], sep="")),
+            "Female_Cox_50" = get(paste("cox_Female_OUES_50_", death_var[i], sep="")),
+            "Female_Concord_50" = get(paste("concordance_Female_OUES_50_", death_var[i], sep="")),
+            
+            "All_Cox_75" = get(paste("cox_all_OUES_75_", death_var[i], sep="")),
+            "All_Concord_75" = get(paste("concordance_all_OUES_75_", death_var[i], sep="")),
+            "Male_Cox_75" = get(paste("cox_Male_OUES_75_", death_var[i], sep="")),
+            "Male_Concord_75" = get(paste("concordance_Male_OUES_75_", death_var[i], sep="")),
+            "Female_Cox_75" = get(paste("cox_Female_OUES_75_", death_var[i], sep="")),
+            "Female_Concord_75" = get(paste("concordance_Female_OUES_75_", death_var[i], sep=""))
             )
             
-  write_xlsx(y, here::here(paste("../OUES_", death_var[i], "_results_4_27_2022_.xlsx", sep="")))
+  write_xlsx(y, here::here(paste("../OUES_", death_var[i], "_results_5_3_2022.xlsx", sep="")))
   
   
 }
