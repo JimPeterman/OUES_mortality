@@ -22,17 +22,23 @@ data <- read_excel(here::here("../BALLST_healthy_cohort_dataset.xlsx"))
 # Keep only those with sex known.
 data <- data[(data$sex == "Male" | data$sex == "Female"),]
 
-# Drop individuals aged over 85 or under 20.
-data <- data[!(data$age>85 | data$age<20),]
+# Drop individuals aged over 85 or under 18
+data <- data[!(data$age>85 | data$age<18),]
 
 # Drop those taking beta blocker medications (keeps them if value is missing).
 data <- data[!(data$med_beta %in% 1),]
+
+# Drop those with short test times (need ≥2 minutes for 50% of test time). 
+data <- filter(data, test_time >=5)
 
 # Include only those with an RER>=1.0.
 data <- data %>% filter(max_rer >= 1.0)
 
 # Keep only treadmill tests.
 data <- filter(data, test_mode=="TM")
+
+# Drops those with OUES values outside of the "normal" range.
+data <- data[(data$OUES <= 6.0 & data$OUES >= 1.0),]
 
 ################################################
 # Need to filter down to years of interest for analysis.
@@ -156,7 +162,6 @@ data_min[] <- lapply(data_min, as.numeric)
 
 #####################################################################
 # Add in the calculated OUES (using data from 50% and 75% of total test time).
-#####################################################################
 
 # Add columns to write to in the MAIN dataset.
 data <- mutate(data, OUES_50 = NA)
@@ -269,10 +274,14 @@ for(i in 1:nrow(data_min)){
 # Final filtering and dataset creation.
 ###########################################################################################
 
-# Drops those with OUES values outside of the "normal" range.
-data <- data[(data$OUES <= 6.0 & data$OUES >= 1.0),]
-data <- data[(data$OUES_50 <= 6.0 & data$OUES_50 >= 1.0),]
-data <- data[(data$OUES_75 <= 6.0 & data$OUES_75 >= 1.0),]
+# Drops values outside of "normal" range for OUES_50 and OUES_75
+# (not dropping these tests though!)
+# In other words, the submax analyses will be a subset from the main dataset.
+data <- mutate(data, OUES_50 = ifelse(OUES_50 > 10.0, NA,
+                                      ifelse(OUES_50 < 1.0, NA, OUES_50)))
+data <- mutate(data, OUES_75 = ifelse(OUES_75 > 10.0, NA,
+                                      ifelse(OUES_75 < 1.0, NA, OUES_75)))
+data <- filter(data, !(is.na(OUES_75)))
 
 # Drops those missing an OUES normalized to body surface area 
 # (n=1 but matters for concurrence tests).
@@ -290,5 +299,5 @@ data <- data %>%
 # Save file.
 ###########################################################################################
 
-write_xlsx(data, here::here("../CLEANED_OUES_dataset_5_3_2022_.xlsx"))
+write_xlsx(data, here::here("../CLEANED_OUES_dataset_5_27_2022.xlsx"))
 

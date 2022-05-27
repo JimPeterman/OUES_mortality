@@ -6,17 +6,23 @@ library(survival)
 library(survminer)
 library(stringr)
 
-data <- read_xlsx(here::here("../CLEANED_OUES_dataset_5_3_2022.xlsx"))
+data <- read_xlsx(here::here("../CLEANED_OUES_dataset_5_27_2022.xlsx"))
+
+# Require complete data for the submax OUES variables.
+data <- data[complete.cases(data[,c("OUES_50", "OUES_75")]),]
+
 
 #######################################################################
 # Cox proportional hazards and Concordance tests.
 #######################################################################
 
 group_type <- c("all", "Male", "Female")
-death_var <- c("all", "Cancer", "CVD")
-# death_var <- c("all")
+# death_var <- c("all", "Cancer", "CVD")
+death_var <- c("all")
 var_int <- c("OUES", "OUES_norm", "OUES_50", "OUES_75")
-
+ 
+# var_int <- c("OUES", "OUES_norm")
+# var_int <- c("OUES_50", "OUES_75")
 
 # Start with a quick check for colinearity of features using VIF (<5 is ok).
 for(i in 1:(length(var_int)+1)){
@@ -38,6 +44,7 @@ for(i in 1:(length(var_int)+1)){
 # Included output for sex comparisons:
 # If sex term is sig, then there is a difference in the strength of the relationship
 # between men and women (which is stronger can be seen with HR for sex-specific analysis). 
+
 for(p in 1:length(group_type)){
   for(i in 1:length(var_int)){
     for(k in 1:length(death_var)){
@@ -58,7 +65,6 @@ for(p in 1:length(group_type)){
         temp_df <- temp_df[(temp_df$mortality_grouping %in% to_keep),]
         rm(to_keep)    
       }
-      
 
       if(group_type[p] == "all"){
         ##########################################################################
@@ -93,19 +99,39 @@ for(p in 1:length(group_type)){
         res_cox_multi_3_VO2 <- coxph(Surv(follow_up_yrs, mortality_status) ~ VO2_rel + age + sex + record_year +
                                        obesity + hypertension + dyslipidemia + diabetes + inactivity + smoker, data = temp_df)
         
+        #######################################################################
+        # Do all of the OUES (from 100% of the data) models.
+        # Model 1 - Univariate Model.
+        res_cox_uni_OUES <- coxph(Surv(follow_up_yrs, mortality_status) ~ OUES, data = temp_df)
+        
+        # Model 2 - Control for: age, sex, test year.
+        res_cox_multi_2_OUES <- coxph(Surv(follow_up_yrs, mortality_status) ~ OUES + age + sex + record_year, data = temp_df)
+        
+        # Model 3 - Control for: age, sex, test year, obesity, hypertension, dyslipidemia, diabetes, PA, smoking, record year.
+        res_cox_multi_3_OUES <- coxph(Surv(follow_up_yrs, mortality_status) ~ OUES + age + sex + record_year +
+                                        obesity + hypertension + dyslipidemia + diabetes + inactivity + smoker, data = temp_df)
+        
+        # Model 4 - Control for: age, sex, test year, obesity, hypertension, dyslipidemia, diabetes, PA, smoking, record year, VO2max.
+        res_cox_multi_4_OUES <- coxph(Surv(follow_up_yrs, mortality_status) ~ OUES + age + sex + record_year +
+                                        obesity + hypertension + dyslipidemia + diabetes + inactivity + smoker +
+                                        VO2_rel, data = temp_df)
+        
         # Create a summary of the Cox analysis.
         models <- c("res_cox_uni", "res_cox_multi_2", "res_cox_multi_3", "res_cox_multi_4",
-                    "res_cox_uni_VO2", "res_cox_multi_2_VO2", "res_cox_multi_3_VO2")
+                    "res_cox_uni_VO2", "res_cox_multi_2_VO2", "res_cox_multi_3_VO2",
+                    "res_cox_uni_OUES", "res_cox_multi_2_OUES", "res_cox_multi_3_OUES", "res_cox_multi_4_OUES")
         temp_summary <- data.frame(c("Univariate", "Age, sex, test year", 
                                      "Age, sex, test year, obesity, hypertension, dyslipidemia, diabetes, PA, smoking",
                                      "Age, sex, test year, obesity, hypertension, dyslipidemia, diabetes, PA, smoking, VO2max"))
         colnames(temp_summary)[1] <- paste(var_int[i], death_var[k], sep = "_")
         
-        # The below counter is to get the VO2 models on the correct rows.
-        counter <- 1
+        # The below counters are to get the VO2/OUES models on the correct rows.
+        counter_vo2 <- 1
+        counter_oues <- 1
         for(j in 1:length(models)){
-          if(substr(models[j], (nchar(models[j])-2), (nchar(models[j]))) != "VO2"){
-            # Add in the variable of interest.
+          # Add the summary for the variable of interest.
+          if(substr(models[j], (nchar(models[j])-2), (nchar(models[j]))) != "VO2" &
+             (substr(models[j], (nchar(models[j])-3), (nchar(models[j]))) != "OUES")){
             
             # Determine whether there needs to be a significance value added.
             sig_sym <- ifelse((summary(get(paste(models)[j]))$coefficients["temp_df[[var_int[i]]]","Pr(>|z|)"] < 0.05), "*", "")
@@ -114,7 +140,7 @@ for(p in 1:length(group_type)){
             temp_vec <- sprintf("%.3f", round(unname(summary(get(paste(models)[j]))$conf.int["temp_df[[var_int[i]]]",]),3))
             
             temp_summary[j,paste(var_int[i], "HR (95% CI)")] <- str_trim(paste(temp_vec[1], " (", temp_vec[3], "-",
-                                                                      temp_vec[4], ") ", sig_sym, sep = ""))
+                                                                      temp_vec[4], ")", sig_sym, sep = ""))
             temp_summary[j,paste(var_int[i], "p-value")] <- round(summary(get(paste(models)[j]))$coefficients["temp_df[[var_int[i]]]","Pr(>|z|)"],4)
             temp_summary[j,"n"] <- summary(get(paste(models)[j]))$n
             temp_summary[j,"Number of Events"] <- summary(get(paste(models)[j]))$nevent
@@ -122,31 +148,38 @@ for(p in 1:length(group_type)){
             temp_summary[j,"Concordance"] <- sprintf("%.3f", round(summary(get(paste(models)[j]))$concordance["C"], 3))
             temp_summary[j,"AIC"] <- sprintf("%.1f", round(AIC(get(paste(models)[j])),1))
             if(models[j] == "res_cox_uni"){
-              temp_summary[j, paste(var_int[i], "model sex term p-value")] <- NA
+              temp_summary[j,"sex term p-value"] <- NA
             } else {
-              temp_summary[j, paste(var_int[i], "model sex term p-value")] <- round(summary(get(paste(models)[j]))$coefficients["sexMale","Pr(>|z|)"],4)
+              temp_summary[j,"sex term p-value"] <- round(summary(get(paste(models)[j]))$coefficients["sexMale","Pr(>|z|)"],4)
             }
             
             rm(temp_vec)
             
-          } else {
-            # Add in the VO2 data. 
+            # Add the summary for the VO2 models.  
+          } else if(substr(models[j], (nchar(models[j])-2), (nchar(models[j]))) == "VO2") {
             
             # Determine whether there needs to be a significance value added.
             sig_sym <- ifelse((summary(get(paste(models)[j]))$coefficients["VO2_rel","Pr(>|z|)"] < 0.05), "*", "")
             
             temp_vec <- sprintf("%.3f", round(unname(summary(get(paste(models)[j]))$conf.int["VO2_rel",]),3))
-            temp_summary[counter,"VO2 HR (95% CI)"] <- str_trim(paste(temp_vec[1], " (", temp_vec[3], "-",
-                                                             temp_vec[4], ") ", sig_sym, sep = ""))
-            temp_summary[counter,"VO2 p-value"] <- round(summary(get(paste(models)[j]))$coefficients["VO2_rel","Pr(>|z|)"],4)
-            counter <- counter + 1          
+            temp_summary[counter_vo2,"VO2 HR (95% CI)"] <- paste(temp_vec[1], " (", temp_vec[3], "-",
+                                                                 temp_vec[4], ")", sig_sym, sep = "")
+            temp_summary[counter_vo2,"VO2 p-value"] <- round(summary(get(paste(models)[j]))$coefficients["VO2_rel","Pr(>|z|)"],4)
+            counter_vo2 <- counter_vo2 + 1
+            
+            # Add the summary for the OUES models.
+          } else if (substr(models[j], (nchar(models[j])-3), (nchar(models[j]))) == "OUES"){
+            
+            # Determine whether there needs to be a significance value added.
+            sig_sym <- ifelse((summary(get(paste(models)[j]))$coefficients["OUES","Pr(>|z|)"] < 0.05), "*", "")
+            
+            temp_vec <- sprintf("%.3f", round(unname(summary(get(paste(models)[j]))$conf.int["OUES",]),3))
+            temp_summary[counter_oues,"OUES HR (95% CI)"] <- paste(temp_vec[1], " (", temp_vec[3], "-",
+                                                                   temp_vec[4], ")", sig_sym, sep = "")
+            temp_summary[counter_oues,"OUES p-value"] <- round(summary(get(paste(models)[j]))$coefficients["OUES","Pr(>|z|)"],4)
+            counter_oues <- counter_oues + 1 
           }
         }
-        
-        # Add definition of significance symbol.
-        temp_summary[nrow(temp_summary)+2, paste(var_int[i], "HR (95% CI)")] <- paste("*: significant predictor")
-        temp_summary[nrow(temp_summary), "VO2 HR (95% CI)"] <- paste("*: significant predictor")
-        
         assign(paste("cox", group_type[p], var_int[i], death_var[k], sep = "_"), temp_summary)
         
         #######################################################################
@@ -157,8 +190,7 @@ for(p in 1:length(group_type)){
         
         concordance_summary <- data.frame("Model_Comparison" = c("Univariate", "Age, Sex, Test Year", 
                                                                  "Age, Sex, Testing Year, and Risk Factors","","",
-                                                                 paste("Adding", var_int[i], "to VO2 Model"),
-                                                                 "","", paste("Adding VO2 to", var_int[i], "Model"),
+                                                                 paste("Adding", var_int[i], "to Model"),
                                                                  "","","Correlations"))
         colnames(concordance_summary)[1] <- paste(var_int[i], death_var[k], sep = "_")
         
@@ -207,52 +239,73 @@ for(p in 1:length(group_type)){
         concordance_summary[6,"p value"] <- round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5)
         concordance_summary[6,"VO2 Concordance"] <- 
           sprintf("%.3f", round(res_cox_multi_3_VO2$concordance["concordance"], 3))
-        # Add in significance value if VO2+variable of interest model is stronger than just VO2.
-        sig_sym <- ifelse((round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5) < 0.05), "‡", "")
         concordance_summary[6,paste(var_int[i], "Concordance")] <- 
-          str_trim(paste(sprintf("%.3f", round(res_cox_multi_4$concordance["concordance"], 3)), sig_sym))
+          sprintf("%.3f", round(res_cox_multi_4$concordance["concordance"], 3))
         concordance_summary[6,"VO2 AIC"] <- sprintf("%.1f", round(AIC(res_cox_multi_3_VO2),1))
         concordance_summary[6,paste(var_int[i], "AIC")] <- sprintf("%.1f", round(AIC(res_cox_multi_4),1))
         
         rm(ctest, dtest, dvar, contr)
         
-        # To fill in new labels for the Variable to VO2+Variable comparisons.
-        concordance_summary[8,2:9] <- c("Contrast", "SD", "Z Score", "p value", paste(var_int[i]),
-                                        paste(var_int[i], "+VO2", "Concordance"), 
-                                        paste(var_int[i], "AIC"), paste(var_int[i], "+VO2", "AIC"))
-        
-        # Comparing the addition of Variable of interest to the Variable+VO2 model.
-        ctest <- concordance(res_cox_multi_3, res_cox_multi_4)
-        contr <- c(-1, 1)
-        dtest <- contr %*% coef(ctest)
-        dvar <- contr %*% vcov(ctest) %*% contr
-        
-        concordance_summary[9,"Contrast"] <- round(dtest, 4)
-        concordance_summary[9,"SD"] <- round(sqrt(dvar), 4)
-        concordance_summary[9,"Z Score"] <- round((dtest/sqrt(dvar)), 2)
-        concordance_summary[9,"p value"] <- round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5)
-        concordance_summary[9,"VO2 Concordance"] <- 
-          sprintf("%.3f", round(res_cox_multi_3$concordance["concordance"], 3))
-        # Add in significance value if VO2+variable of interest model is stronger than just the variable model.
-        sig_sym <- ifelse((round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5) < 0.05), "‡", "")
-        concordance_summary[9,paste(var_int[i], "Concordance")] <- 
-          str_trim(paste(sprintf("%.3f", round(res_cox_multi_4$concordance["concordance"], 3)), sig_sym))
-        concordance_summary[9,"VO2 AIC"] <- sprintf("%.1f", round(AIC(res_cox_multi_3),1))
-        concordance_summary[9,paste(var_int[i], "AIC")] <- sprintf("%.1f", round(AIC(res_cox_multi_4),1))
-        
-        rm(ctest, dtest, dvar, contr)
-        
-        
         # Correlation between variables.
-        concordance_summary[11,2:3] <- c("r", "p-value")
-        concordance_summary[12,2] <- sprintf("%.2f", round(cor(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson"), 2)) 
-        concordance_summary[12,3] <- round(cor.test(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson")$p.value, 5)
+        concordance_summary[8,2:3] <- c("r", "p-value")
+        concordance_summary[9,2] <- sprintf("%.2f", round(cor(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson"), 2)) 
+        concordance_summary[9,3] <- round(cor.test(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson")$p.value, 5)
         
-        # Add in the description of the significant symbols.
-        concordance_summary[11, 6] <- paste("†: significantly different from VO2 model")
-        concordance_summary[11, 7] <- paste("‡: combined model significantly different")
+        assign(paste("concordance_VO2", group_type[p], var_int[i], death_var[k], sep = "_"), concordance_summary)
         
-        assign(paste("concordance", group_type[p], var_int[i], death_var[k], sep = "_"), concordance_summary)
+        
+        #################
+        # Concordance Tests to compare OUES models (if OUES is not the variable of interest).
+        
+        if(var_int[i] != "OUES"){
+          
+          int_model <- c("res_cox_uni", "res_cox_multi_2", "res_cox_multi_3", "res_cox_multi_4")
+          OUES_models <- c("res_cox_uni_OUES", "res_cox_multi_2_OUES", "res_cox_multi_3_OUES",
+                           "res_cox_multi_4_OUES")
+          
+          concordance_summary <- data.frame("Model_Comparison" = c("Univariate", "Age, Sex, Test Year", 
+                                                                   "Age, Sex, Testing Year, and Risk Factors",
+                                                                   "Age, Sex, Testing Year, Risk Factors, and VO2","","",
+                                                                   "Correlations", ""))
+          colnames(concordance_summary)[1] <- paste(var_int[i], death_var[k], sep = "_")
+          
+          
+          # Comparing the Variable of interest and OUES models
+          for(m in 1:length(int_model)){
+            ctest <- concordance(get(paste(OUES_models[m])), get(paste(int_model[m])))
+            
+            contr <- c(-1, 1)
+            dtest <- contr %*% coef(ctest)
+            dvar <- contr %*% vcov(ctest) %*% contr
+            # Stat results (z-score > |1.96| is significant).
+            concordance_summary[m,"Contrast"] <- round(dtest, 4)
+            concordance_summary[m,"SD"] <- round(sqrt(dvar), 4)
+            concordance_summary[m,"Z Score"] <- round((dtest/sqrt(dvar)), 2)
+            # to get (2 sided) p value it's: 2*pnorm(-abs(z score))
+            concordance_summary[m,"p value"] <- round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5)
+            # Concordance values - what's getting compared in the models.
+            # Determine whether significance needs to be added (different symbol for different sig note).
+            sig_sym <- ifelse((round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5) < 0.05), "†", "")
+            concordance_summary[m,"OUES Concordance"] <- 
+              sprintf("%.3f", round(summary(get(paste(OUES_models)[m]))$concordance["C"], 3))
+            concordance_summary[m, paste(var_int[i], "Concordance")] <- 
+              str_trim(paste(sprintf("%.3f", round(summary(get(paste(int_model)[m]))$concordance["C"], 3)), sig_sym))
+            # AIC - model fits to describe findings more.
+            concordance_summary[m,"OUES AIC"] <- sprintf("%.1f", round(AIC(get(paste(OUES_models)[m])),1))
+            concordance_summary[m,paste(var_int[i], "AIC")] <- sprintf("%.1f", round(AIC(get(paste(int_model)[m])),1))
+            
+            rm(ctest, dtest, dvar, contr)
+          }
+          
+          
+          # Correlation between variables.
+          concordance_summary[7,2:3] <- c("r", "p-value")
+          concordance_summary[8,2] <- sprintf("%.2f", round(cor(temp_df[[var_int[i]]], temp_df$OUES, method = "pearson"), 2)) 
+          concordance_summary[8,3] <- round(cor.test(temp_df[[var_int[i]]], temp_df$OUES, method = "pearson")$p.value, 5)
+          
+          assign(paste("concordance_OUES", group_type[p], var_int[i], death_var[k], sep = "_"), concordance_summary)
+          
+        }
         
         #######################################################################
         # Schoenfeld Residuals.
@@ -302,7 +355,7 @@ for(p in 1:length(group_type)){
         
         rm(temp_df, models, temp_summary, res_cox_uni, res_cox_multi_2, res_cox_multi_3, res_cox_multi_4,
            res_cox_uni_VO2, res_cox_multi_2_VO2, res_cox_multi_3_VO2, concordance_summary, temp_sch_resid) 
-        rm(counter, temp_vec, int_model, VO2_models)
+        rm(temp_vec, int_model, VO2_models)
         
       } else {
         
@@ -338,19 +391,39 @@ for(p in 1:length(group_type)){
         res_cox_multi_3_VO2 <- coxph(Surv(follow_up_yrs, mortality_status) ~ VO2_rel + age + record_year +
                                        obesity + hypertension + dyslipidemia + diabetes + inactivity + smoker, data = temp_df)
         
+        #######################################################################
+        # Do all of the OUES (from 100% of the data) models.
+        # Model 1 - Univariate Model.
+        res_cox_uni_OUES <- coxph(Surv(follow_up_yrs, mortality_status) ~ OUES, data = temp_df)
+        
+        # Model 2 - Control for: age, sex, test year.
+        res_cox_multi_2_OUES <- coxph(Surv(follow_up_yrs, mortality_status) ~ OUES + age + record_year, data = temp_df)
+        
+        # Model 3 - Control for: age, sex, test year, obesity, hypertension, dyslipidemia, diabetes, PA, smoking, record year.
+        res_cox_multi_3_OUES <- coxph(Surv(follow_up_yrs, mortality_status) ~ OUES + age + record_year +
+                                        obesity + hypertension + dyslipidemia + diabetes + inactivity + smoker, data = temp_df)
+        
+        # Model 4 - Control for: age, sex, test year, obesity, hypertension, dyslipidemia, diabetes, PA, smoking, record year, VO2max.
+        res_cox_multi_4_OUES <- coxph(Surv(follow_up_yrs, mortality_status) ~ OUES + age + record_year +
+                                        obesity + hypertension + dyslipidemia + diabetes + inactivity + smoker +
+                                        VO2_rel, data = temp_df)
+        
         # Create a summary of the Cox analysis.
         models <- c("res_cox_uni", "res_cox_multi_2", "res_cox_multi_3", "res_cox_multi_4",
-                    "res_cox_uni_VO2", "res_cox_multi_2_VO2", "res_cox_multi_3_VO2")
+                    "res_cox_uni_VO2", "res_cox_multi_2_VO2", "res_cox_multi_3_VO2",
+                    "res_cox_uni_OUES", "res_cox_multi_2_OUES", "res_cox_multi_3_OUES", "res_cox_multi_4_OUES")
         temp_summary <- data.frame(c("Univariate", "Age, test year", 
                                      "Age, test year, obesity, hypertension, dyslipidemia, diabetes, PA, smoking",
                                      "Age, test year, obesity, hypertension, dyslipidemia, diabetes, PA, smoking, VO2max"))
         colnames(temp_summary)[1] <- paste(var_int[i], death_var[k], sep = "_")
         
-        # The below counter is to get the VO2 models on the correct rows.
-        counter <- 1
+        # The below counters are to get the VO2/OUES models on the correct rows.
+        counter_vo2 <- 1
+        counter_oues <- 1
         for(j in 1:length(models)){
-          if(substr(models[j], (nchar(models[j])-2), (nchar(models[j]))) != "VO2"){
-            # Add in the variable of interest.
+          # Add the summary for the variable of interest.
+          if(substr(models[j], (nchar(models[j])-2), (nchar(models[j]))) != "VO2" &
+             (substr(models[j], (nchar(models[j])-3), (nchar(models[j]))) != "OUES")){
             
             # Determine whether there needs to be a significance value added.
             sig_sym <- ifelse((summary(get(paste(models)[j]))$coefficients["temp_df[[var_int[i]]]","Pr(>|z|)"] < 0.05), "*", "")
@@ -359,7 +432,7 @@ for(p in 1:length(group_type)){
             temp_vec <- sprintf("%.3f", round(unname(summary(get(paste(models)[j]))$conf.int["temp_df[[var_int[i]]]",]),3))
             
             temp_summary[j,paste(var_int[i], "HR (95% CI)")] <- str_trim(paste(temp_vec[1], " (", temp_vec[3], "-",
-                                                                      temp_vec[4], ") ", sig_sym, sep = ""))
+                                                                               temp_vec[4], ")", sig_sym, sep = ""))
             temp_summary[j,paste(var_int[i], "p-value")] <- round(summary(get(paste(models)[j]))$coefficients["temp_df[[var_int[i]]]","Pr(>|z|)"],4)
             temp_summary[j,"n"] <- summary(get(paste(models)[j]))$n
             temp_summary[j,"Number of Events"] <- summary(get(paste(models)[j]))$nevent
@@ -369,23 +442,31 @@ for(p in 1:length(group_type)){
             
             rm(temp_vec)
             
-          } else {
-            # Add in the VO2 summary.
+            # Add the summary for the VO2 models.  
+          } else if(substr(models[j], (nchar(models[j])-2), (nchar(models[j]))) == "VO2") {
             
             # Determine whether there needs to be a significance value added.
             sig_sym <- ifelse((summary(get(paste(models)[j]))$coefficients["VO2_rel","Pr(>|z|)"] < 0.05), "*", "")
             
             temp_vec <- sprintf("%.3f", round(unname(summary(get(paste(models)[j]))$conf.int["VO2_rel",]),3))
-            temp_summary[counter,"VO2 HR (95% CI)"] <- str_trim(paste(temp_vec[1], " (", temp_vec[3], "-",
-                                                             temp_vec[4], ") ", sig_sym, sep = ""))
-            temp_summary[counter,"VO2 p-value"] <- round(summary(get(paste(models)[j]))$coefficients["VO2_rel","Pr(>|z|)"],4)
-            counter <- counter + 1          
+            temp_summary[counter_vo2,"VO2 HR (95% CI)"] <- paste(temp_vec[1], " (", temp_vec[3], "-",
+                                                                 temp_vec[4], ")", sig_sym, sep = "")
+            temp_summary[counter_vo2,"VO2 p-value"] <- round(summary(get(paste(models)[j]))$coefficients["VO2_rel","Pr(>|z|)"],4)
+            counter_vo2 <- counter_vo2 + 1
+            
+            # Add the summary for the OUES models.
+          } else if (substr(models[j], (nchar(models[j])-3), (nchar(models[j]))) == "OUES"){
+            
+            # Determine whether there needs to be a significance value added.
+            sig_sym <- ifelse((summary(get(paste(models)[j]))$coefficients["OUES","Pr(>|z|)"] < 0.05), "*", "")
+            
+            temp_vec <- sprintf("%.3f", round(unname(summary(get(paste(models)[j]))$conf.int["OUES",]),3))
+            temp_summary[counter_oues,"OUES HR (95% CI)"] <- paste(temp_vec[1], " (", temp_vec[3], "-",
+                                                                   temp_vec[4], ")", sig_sym, sep = "")
+            temp_summary[counter_oues,"OUES p-value"] <- round(summary(get(paste(models)[j]))$coefficients["OUES","Pr(>|z|)"],4)
+            counter_oues <- counter_oues + 1 
           }
         }
-        # Add definition of significance symbol.
-        temp_summary[nrow(temp_summary)+2, paste(var_int[i], "HR (95% CI)")] <- paste("*: significant predictor")
-        temp_summary[nrow(temp_summary), "VO2 HR (95% CI)"] <- paste("*: significant predictor")
-        
         assign(paste("cox", group_type[p], var_int[i], death_var[k], sep = "_"), temp_summary)
         
         #######################################################################
@@ -396,8 +477,7 @@ for(p in 1:length(group_type)){
         
         concordance_summary <- data.frame("Model_Comparison" = c("Univariate", "Age, Test Year", 
                                                                  "Age, Testing Year, and Risk Factors","","",
-                                                                 paste("Adding", var_int[i], "to VO2 Model"),
-                                                                 "","", paste("Adding VO2 to", var_int[i], "Model"),
+                                                                 paste("Adding", var_int[i], "to Model"),
                                                                  "","","Correlations"))
         colnames(concordance_summary)[1] <- paste(var_int[i], death_var[k], sep = "_")
         
@@ -424,7 +504,7 @@ for(p in 1:length(group_type)){
             str_trim(paste(sprintf("%.3f", round(summary(get(paste(int_model)[m]))$concordance["C"], 3)), sig_sym))
           # AIC - model fits to describe findings more.
           concordance_summary[m,"VO2 AIC"] <- sprintf("%.1f", round(AIC(get(paste(VO2_models)[m])),1))
-          concordance_summary[m,paste(var_int[i], "AIC")] <- sprintf("%.1f", round(AIC(get(paste(int_model)[m])),1))
+          concordance_summary[m, paste(var_int[i], "AIC")] <- sprintf("%.1f", round(AIC(get(paste(int_model)[m])),1))
           
           rm(ctest, dtest, dvar, contr)
         }
@@ -444,53 +524,76 @@ for(p in 1:length(group_type)){
         concordance_summary[6,"SD"] <- round(sqrt(dvar), 4)
         concordance_summary[6,"Z Score"] <- round((dtest/sqrt(dvar)), 2)
         concordance_summary[6,"p value"] <- round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5)
-        concordance_summary[6,"VO2 Concordance"] <- sprintf("%.3f", round(res_cox_multi_3_VO2$concordance["concordance"], 3))
-        # Add in significance value if VO2+variable of interest model is stronger than just VO2.
-        sig_sym <- ifelse((round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5) < 0.05), "‡", "")
+        concordance_summary[6,"VO2 Concordance"] <- 
+          sprintf("%.3f", round(res_cox_multi_3_VO2$concordance["concordance"], 3))
         concordance_summary[6,paste(var_int[i], "Concordance")] <- 
-          str_trim(paste(sprintf("%.3f", round(res_cox_multi_4$concordance["concordance"], 3)), sig_sym))
+          sprintf("%.3f", round(res_cox_multi_4$concordance["concordance"], 3))
         concordance_summary[6,"VO2 AIC"] <- sprintf("%.1f", round(AIC(res_cox_multi_3_VO2),1))
-        concordance_summary[6,9] <- sprintf("%.1f", round(AIC(res_cox_multi_4),1))
+        concordance_summary[6,paste(var_int[i], "AIC")] <- sprintf("%.1f", round(AIC(res_cox_multi_4),1))
         
         rm(ctest, dtest, dvar, contr)
-        
-        # To fill in new labels for the Variable to VO2+Variable comparisons.
-        concordance_summary[8,2:9] <- c("Contrast", "SD", "Z Score", "p value", paste(var_int[i]),
-                                        paste(var_int[i], "+VO2", "Concordance"), 
-                                        paste(var_int[i], "AIC"), paste(var_int[i], "+VO2", "AIC"))
-        
-        # Comparing the addition of Variable of interest to the Variable+VO2 model.
-        ctest <- concordance(res_cox_multi_3, res_cox_multi_4)
-        contr <- c(-1, 1)
-        dtest <- contr %*% coef(ctest)
-        dvar <- contr %*% vcov(ctest) %*% contr
-        
-        concordance_summary[9,"Contrast"] <- round(dtest, 4)
-        concordance_summary[9,"SD"] <- round(sqrt(dvar), 4)
-        concordance_summary[9,"Z Score"] <- round((dtest/sqrt(dvar)), 2)
-        concordance_summary[9,"p value"] <- round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5)
-        concordance_summary[9,"VO2 Concordance"] <- 
-          sprintf("%.3f", round(res_cox_multi_3$concordance["concordance"], 3))
-        # Add in significance value if VO2+variable of interest model is stronger than just the variable model.
-        sig_sym <- ifelse((round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5) < 0.05), "‡", "")
-        concordance_summary[9,paste(var_int[i], "Concordance")] <- 
-          str_trim(paste(sprintf("%.3f", round(res_cox_multi_4$concordance["concordance"], 3)), sig_sym))
-        concordance_summary[9,"VO2 AIC"] <- sprintf("%.1f", round(AIC(res_cox_multi_3),1))
-        concordance_summary[9,paste(var_int[i], "AIC")] <- sprintf("%.1f", round(AIC(res_cox_multi_4),1))
-        
-        rm(ctest, dtest, dvar, contr)
-
         
         # Correlation between variables.
-        concordance_summary[11,2:3] <- c("r", "p-value")
-        concordance_summary[12,2] <- sprintf("%.2f", round(cor(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson"), 2)) 
-        concordance_summary[12,3] <- round(cor.test(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson")$p.value, 5)
+        concordance_summary[8,2:3] <- c("r", "p-value")
+        concordance_summary[9,2] <- sprintf("%.2f", round(cor(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson"), 2)) 
+        concordance_summary[9,3] <- round(cor.test(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson")$p.value, 5)
         
-        # Add in the description of the significant symbols.
-        concordance_summary[11, 6] <- paste("†: significantly different from VO2 model")
-        concordance_summary[11, 7] <- paste("‡: combined model significantly different")
+        assign(paste("concordance_VO2", group_type[p], var_int[i], death_var[k], sep = "_"), concordance_summary)
         
-        assign(paste("concordance", group_type[p], var_int[i], death_var[k], sep = "_"), concordance_summary)
+        
+        #################
+        # Concordance Tests to compare OUES models (if OUES is not the variable of interest).
+        
+        if(var_int[i] != "OUES"){
+          
+          int_model <- c("res_cox_uni", "res_cox_multi_2", "res_cox_multi_3", "res_cox_multi_4")
+          OUES_models <- c("res_cox_uni_OUES", "res_cox_multi_2_OUES", "res_cox_multi_3_OUES",
+                           "res_cox_multi_4_OUES")
+          
+          concordance_summary <- data.frame("Model_Comparison" = c("Univariate", "Age, Test Year", 
+                                                                   "Age, Testing Year, and Risk Factors",
+                                                                   "Age, Testing Year, Risk Factors, and VO2","","",
+                                                                   "Correlations", ""))
+          colnames(concordance_summary)[1] <- paste(var_int[i], death_var[k], sep = "_")
+          
+          
+          # Comparing the Variable of interest and OUES models
+          for(m in 1:length(int_model)){
+            ctest <- concordance(get(paste(OUES_models[m])), get(paste(int_model[m])))
+            
+            contr <- c(-1, 1)
+            dtest <- contr %*% coef(ctest)
+            dvar <- contr %*% vcov(ctest) %*% contr
+            # Stat results (z-score > |1.96| is significant).
+            concordance_summary[m,"Contrast"] <- round(dtest, 4)
+            concordance_summary[m,"SD"] <- round(sqrt(dvar), 4)
+            concordance_summary[m,"Z Score"] <- round((dtest/sqrt(dvar)), 2)
+            # to get (2 sided) p value it's: 2*pnorm(-abs(z score))
+            concordance_summary[m,"p value"] <- round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5)
+            # Concordance values - what's getting compared in the models.
+            # Determine whether significance needs to be added (different symbol for different sig note).
+            sig_sym <- ifelse((round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5) < 0.05), "†", "")
+            concordance_summary[m,"OUES Concordance"] <- 
+              sprintf("%.3f", round(summary(get(paste(OUES_models)[m]))$concordance["C"], 3))
+            concordance_summary[m, paste(var_int[i], "Concordance")] <- 
+              str_trim(paste(sprintf("%.3f", round(summary(get(paste(int_model)[m]))$concordance["C"], 3)), sig_sym))
+            # AIC - model fits to describe findings more.
+            concordance_summary[m,"OUES AIC"] <- sprintf("%.1f", round(AIC(get(paste(OUES_models)[m])),1))
+            concordance_summary[m,paste(var_int[i], "AIC")] <- sprintf("%.1f", round(AIC(get(paste(int_model)[m])),1))
+            
+            rm(ctest, dtest, dvar, contr)
+          }
+          
+          
+          # Correlation between variables.
+          concordance_summary[7,2:3] <- c("r", "p-value")
+          concordance_summary[8,2] <- sprintf("%.2f", round(cor(temp_df[[var_int[i]]], temp_df$OUES, method = "pearson"), 2)) 
+          concordance_summary[8,3] <- round(cor.test(temp_df[[var_int[i]]], temp_df$OUES, method = "pearson")$p.value, 5)
+          
+          assign(paste("concordance_OUES", group_type[p], var_int[i], death_var[k], sep = "_"), concordance_summary)
+          
+        }
+        
         
         #######################################################################
         # Schoenfeld Residuals.
@@ -540,7 +643,7 @@ for(p in 1:length(group_type)){
         
         rm(temp_df, models, temp_summary, res_cox_uni, res_cox_multi_2, res_cox_multi_3, res_cox_multi_4,
            res_cox_uni_VO2, res_cox_multi_2_VO2, res_cox_multi_3_VO2, concordance_summary, temp_sch_resid) 
-        rm(counter, temp_vec, int_model, VO2_models)
+        rm(temp_vec, int_model, VO2_models)
         
       }
       
@@ -571,11 +674,6 @@ res_cox_uni_female_vo2 <- coxph(Surv(follow_up_yrs, mortality_status) ~ VO2_rel,
 cox.zph(res_cox_uni_female_vo2)
 plot(cox.zph(res_cox_uni_female_vo2)[1])
 
-# OUES from OUES univariate model (#1) of FEMALES, cancer.
-res_cox_uni_female_oues_cancer <- coxph(Surv(follow_up_yrs, mortality_status) ~ OUES, 
-                                 data = data[(data$sex == "Female" & data$mortality_grouping %in% c(NA, "Cancer")),])
-cox.zph(res_cox_uni_female_oues_cancer)
-plot(cox.zph(res_cox_uni_female_oues_cancer)[1])
 
 ###############################################################################
 # Mean ± SD Statistics.
@@ -583,13 +681,13 @@ plot(cox.zph(res_cox_uni_female_oues_cancer)[1])
 
 # Vector which lists all of the variables you want summarized.
 variables <- c("age", "bmi", "waist", "bsa",
-               "OUES", "OUES_50", "OUES_75","OUES_norm",
+               "OUES", "OUES_norm", "OUES_50", "OUES_75",
                "VO2_rel", "FRIEND_pct", "max_hr", "max_rer",
                "follow_up_yrs")
 
 group_type <- c("all", "Male", "Female")
-# death_var <- c("all")
-death_var <- c("all", "Cancer", "CVD")
+death_var <- c("all")
+# death_var <- c("all", "Cancer", "CVD")
 
 # Create mean ± SD, sample size, t-test summary, and ranges for publication tables.
 for(k in 1:length(death_var)){
@@ -791,7 +889,8 @@ for(k in 1:length(death_var)){
 # library(lmerTest)
 # library(tidyr)
 
-death_var <- c("all", "Cancer", "CVD")
+# death_var <- c("all", "Cancer", "CVD")
+death_var <- c("all")
 
 for(i in 1:length(death_var)){
   # Get the correct mortality grouping.
@@ -1013,7 +1112,8 @@ for(k in 1:length(death_var)){
 ###########################################################################################
 
 # Save each mortality group as it's own Excel file.
-death_var <- c("all", "Cancer", "CVD")
+# death_var <- c("all", "Cancer", "CVD")
+death_var <- c("all")
 
 for(i in 1:length(death_var)){
 
@@ -1022,35 +1122,35 @@ for(i in 1:length(death_var)){
             "OUES_comparisons" = get(paste("OUES_comp_", death_var[i], sep="")),
             
             "All_Cox" = get(paste("cox_all_OUES_", death_var[i], sep="")),
-            "All_Concord" = get(paste("concordance_all_OUES_", death_var[i], sep="")),
+            "All_Concord" = get(paste("concordance_VO2_all_OUES_", death_var[i], sep="")),
             "Male_Cox" = get(paste("cox_Male_OUES_", death_var[i], sep="")),
-            "Male_Concord" = get(paste("concordance_Male_OUES_", death_var[i], sep="")),
+            "Male_Concord" = get(paste("concordance_VO2_Male_OUES_", death_var[i], sep="")),
             "Female_Cox" = get(paste("cox_Female_OUES_", death_var[i], sep="")),
-            "Female_Concord" = get(paste("concordance_Female_OUES_", death_var[i], sep="")),
+            "Female_Concord" = get(paste("concordance_VO2_Female_OUES_", death_var[i], sep="")),
             
             "All_Cox_norm" = get(paste("cox_all_OUES_norm_", death_var[i], sep="")),
-            "All_Concord_norm" = get(paste("concordance_all_OUES_norm_", death_var[i], sep="")),
+            "All_Concord_norm" = get(paste("concordance_VO2_all_OUES_norm_", death_var[i], sep="")),
             "Male_Cox_norm" = get(paste("cox_Male_OUES_norm_", death_var[i], sep="")),
-            "Male_Concord_norm" = get(paste("concordance_Male_OUES_norm_", death_var[i], sep="")),
+            "Male_Concord_norm" = get(paste("concordance_VO2_Male_OUES_norm_", death_var[i], sep="")),
             "Female_Cox_norm" = get(paste("cox_Female_OUES_norm_", death_var[i], sep="")),
-            "Female_Concord_norm" = get(paste("concordance_Female_OUES_norm_", death_var[i], sep="")),
+            "Female_Concord_norm" = get(paste("concordance_VO2_Female_OUES_norm_", death_var[i], sep="")),
             
             "All_Cox_50" = get(paste("cox_all_OUES_50_", death_var[i], sep="")),
-            "All_Concord_50" = get(paste("concordance_all_OUES_50_", death_var[i], sep="")),
+            "All_Concord_50" = get(paste("concordance_VO2_all_OUES_50_", death_var[i], sep="")),
             "Male_Cox_50" = get(paste("cox_Male_OUES_50_", death_var[i], sep="")),
-            "Male_Concord_50" = get(paste("concordance_Male_OUES_50_", death_var[i], sep="")),
+            "Male_Concord_50" = get(paste("concordance_VO2_Male_OUES_50_", death_var[i], sep="")),
             "Female_Cox_50" = get(paste("cox_Female_OUES_50_", death_var[i], sep="")),
-            "Female_Concord_50" = get(paste("concordance_Female_OUES_50_", death_var[i], sep="")),
+            "Female_Concord_50" = get(paste("concordance_VO2_Female_OUES_50_", death_var[i], sep="")),
             
             "All_Cox_75" = get(paste("cox_all_OUES_75_", death_var[i], sep="")),
-            "All_Concord_75" = get(paste("concordance_all_OUES_75_", death_var[i], sep="")),
+            "All_Concord_75" = get(paste("concordance_VO2_all_OUES_75_", death_var[i], sep="")),
             "Male_Cox_75" = get(paste("cox_Male_OUES_75_", death_var[i], sep="")),
-            "Male_Concord_75" = get(paste("concordance_Male_OUES_75_", death_var[i], sep="")),
+            "Male_Concord_75" = get(paste("concordance_VO2_Male_OUES_75_", death_var[i], sep="")),
             "Female_Cox_75" = get(paste("cox_Female_OUES_75_", death_var[i], sep="")),
-            "Female_Concord_75" = get(paste("concordance_Female_OUES_75_", death_var[i], sep=""))
+            "Female_Concord_75" = get(paste("concordance_VO2_Female_OUES_75_", death_var[i], sep=""))
             )
             
-  write_xlsx(y, here::here(paste("../OUES_", death_var[i], "_results_5_3_2022.xlsx", sep="")))
+  write_xlsx(y, here::here(paste("../OUES_", death_var[i], "_results_5_27_2022_v2.xlsx", sep="")))
   
   
 }
