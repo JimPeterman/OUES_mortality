@@ -683,7 +683,7 @@ plot(cox.zph(res_cox_uni_female_vo2)[1])
 variables <- c("age", "bmi", "waist", "bsa",
                "OUES", "OUES_norm", "OUES_50", "OUES_75",
                "VO2_rel", "FRIEND_pct", "max_hr", "max_rer",
-               "follow_up_yrs")
+               "test_time", "follow_up_yrs")
 
 group_type <- c("all", "Male", "Female")
 death_var <- c("all")
@@ -1150,7 +1150,7 @@ for(i in 1:length(death_var)){
             "Female_Concord_75" = get(paste("concordance_VO2_Female_OUES_75_", death_var[i], sep=""))
             )
             
-  write_xlsx(y, here::here(paste("../OUES_", death_var[i], "_results_5_27_2022_v2.xlsx", sep="")))
+  write_xlsx(y, here::here(paste("../OUES_", death_var[i], "_results_6_9_2022_v2.xlsx", sep="")))
   
   
 }
