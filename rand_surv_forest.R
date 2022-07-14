@@ -8,17 +8,16 @@ library(randomForestSRC)
 
 data <- read_xlsx(here::here("../CLEANED_OUES_dataset_5_27_2022.xlsx"))
 
-data$OUES_tertile <- ordered(data$OUES_tertile, levels = c("Bad", "Ok", "Good"))
+# data$OUES_tertile <- ordered(data$OUES_tertile, levels = c("Bad", "Ok", "Good"))
 
 # Characters must be factors:
-data <- data %>% mutate_at(vars(OUES_tertile), as.factor)
+# data <- data %>% mutate_at(vars(OUES_tertile), as.factor)
 
 # R crashes when using sex in model as character. So, make numeric here.
 data <- mutate(data, sex_male = ifelse(sex == "Male", 1, 0))
 
-obj <- rfsrc(Surv(follow_up_yrs, mortality_status) ~ OUES + age + sex_male +
-               obesity + hypertension + dyslipidemia + diabetes + inactivity + smoker +
-               VO2_rel, 
+obj <- rfsrc(Surv(follow_up_yrs, mortality_status) ~ OUES + age + sex_male + record_year +
+               obesity + hypertension + dyslipidemia + diabetes + inactivity + smoker, 
              data = filter(data, sex_male == 0),
              ntree = 100, nodesize = 5, nsplit = 50, importance = TRUE)
 obj
@@ -33,7 +32,8 @@ library(ggplot2)
 
 plot(gg_vimp(obj)) +
   theme(legend.position = c(.8, .2)) +
-  labs(fill="VIMP > 0")
+  labs(fill="VIMP > 0", 
+       title = "Variable Importance from Random Surival Forest Model")
 
 plot(jp)
 
