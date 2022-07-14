@@ -111,11 +111,14 @@ gridExtra::grid.arrange(grobs=plot_list, nrow=2)
 # Create OUES figure with both sexes (only Top and Bottom OUES comparisons).
 ##########################################################################
 
-df <- filter(data, OUES_tertile == "Good" | OUES_tertile == "Bad")
+df_OUES <- filter(data, OUES_tertile == "Good" | OUES_tertile == "Bad")
+df_norm_OUES <- filter(data, OUES_norm_tertile == "Good" | OUES_norm_tertile == "Bad")
+df_50_OUES <- filter(data, OUES_50_tertile == "Good" | OUES_50_tertile == "Bad")
+df_75_OUES <- filter(data, OUES_75_tertile == "Good" | OUES_75_tertile == "Bad")
 
 # Create the plot.
 all_plot <- survminer::ggsurvplot(
-  fit = survfit(Surv(follow_up_yrs, mortality_status) ~ OUES_tertile, data=df), 
+  fit = survfit(Surv(follow_up_yrs, mortality_status) ~ OUES_tertile, data=df_OUES), 
   # palette = c("red3", "darkgreen"),
   pval = T,
   conf.int = T,
@@ -127,25 +130,66 @@ all_plot <- survminer::ggsurvplot(
   legend.labs = c("Top (Good)", "Bottom (Bad)"))
 
 
-# Create the plot for just MALES
-male_plot <- survminer::ggsurvplot(
+# Create the OUES plot for just MALES
+male_OUES_plot <- survminer::ggsurvplot(
   fit = survfit(Surv(follow_up_yrs, mortality_status) ~ OUES_tertile, 
-                data=filter(df, sex == "Male")), 
+                data=filter(df_OUES, sex == "Male")), 
+  palette = c("skyblue", "skyblue4"),
+  pval = T,
+  conf.int = T,
+  xlab = "Years", 
+  ylab = "Overall Survival Probability",
+  title = "Absolute OUES in Males",
+  legend = "right",
+  legend.title = "OUES Tertiles",
+  legend.labs = c("Top (Good)", "Bottom (Bad)"))
+
+# Create the normalized OUES plot for just MALES
+male_norm_OUES_plot <- survminer::ggsurvplot(
+  fit = survfit(Surv(follow_up_yrs, mortality_status) ~ OUES_norm_tertile, 
+                data=filter(df_norm_OUES, sex == "Male")), 
+  palette = c("mediumaquamarine", "forestgreen"),
+  pval = T,
+  conf.int = T,
+  xlab = "Years", 
+  ylab = "Overall Survival Probability",
+  title = "Normalized OUES in Males",
+  legend = "right",
+  legend.title = "Normalized\nOUES Tertiles",
+  legend.labs = c("Top (Good)", "Bottom (Bad)"))
+
+# Create the OUES 50% plot for just MALES
+male_50_OUES_plot <- survminer::ggsurvplot(
+  fit = survfit(Surv(follow_up_yrs, mortality_status) ~ OUES_50_tertile, 
+                data=filter(df_50_OUES, sex == "Male")), 
   palette = c("salmon", "skyblue4"),
   pval = T,
   conf.int = T,
   xlab = "Years", 
   ylab = "Overall Survival Probability",
-  title = "Kaplan-Meier Curve for OUES in Males",
+  title = "Kaplan-Meier Curve for OUES 50% in Males",
   legend = "right",
   legend.title = "OUES Tertiles",
   legend.labs = c("Top (Good)", "Bottom (Bad)"))
 
+# Create the OUES 75% plot for just MALES
+male_75_OUES_plot <- survminer::ggsurvplot(
+  fit = survfit(Surv(follow_up_yrs, mortality_status) ~ OUES_75_tertile, 
+                data=filter(df_75_OUES, sex == "Male")), 
+  palette = c("salmon", "skyblue4"),
+  pval = T,
+  conf.int = T,
+  xlab = "Years", 
+  ylab = "Overall Survival Probability",
+  title = "Kaplan-Meier Curve for OUES 75% in Males",
+  legend = "right",
+  legend.title = "OUES Tertiles",
+  legend.labs = c("Top (Good)", "Bottom (Bad)"))
 
 # Create the plot for just FEMALES
 female_plot <- survminer::ggsurvplot(
   fit = survfit(Surv(follow_up_yrs, mortality_status) ~ OUES_tertile, 
-                data=filter(df, sex == "Female")), 
+                data=filter(df_OUES, sex == "Female")), 
   palette = c("paleturquoise3", "darkslateblue"),
   pval = T,
   conf.int = T,
@@ -157,4 +201,5 @@ female_plot <- survminer::ggsurvplot(
   legend.labs = c("Top (Good)", "Bottom (Bad)"))
 
 
-
+plot_list_2 <- c(male_OUES_plot[1], male_norm_OUES_plot[1])
+gridExtra::grid.arrange(grobs=plot_list_2, nrow=1)

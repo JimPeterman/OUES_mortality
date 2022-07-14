@@ -109,6 +109,16 @@ data <- data %>%
   mutate(OUES_norm_tertile = if_else(OUES_norm_tertile == 1, "Good", 
                                      if_else(OUES_norm_tertile == 2, "Ok", "Bad"))) 
 
+data <- data %>%
+  mutate(OUES_50_tertile = ntile(OUES_50, 3)) %>%
+  mutate(OUES_50_tertile = if_else(OUES_50_tertile == 1, "Good", 
+                                     if_else(OUES_50_tertile == 2, "Ok", "Bad"))) 
+
+data <- data %>%
+  mutate(OUES_75_tertile = ntile(OUES_75, 3)) %>%
+  mutate(OUES_75_tertile = if_else(OUES_75_tertile == 1, "Good", 
+                                     if_else(OUES_75_tertile == 2, "Ok", "Bad"))) 
+
 
 #####################################################################
 # Add the submaximal OUES data from the "minute" dataset.
