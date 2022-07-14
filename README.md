@@ -15,7 +15,7 @@ Three scripts for R were used to create the dataset from the BALL ST cohort and 
 
 The Kaplan-Meier curves below illustrate the findings from the absolute and normalized OUES in the male-specific analyses ¬— those with a higher OUES had a greater probability of survival. 
 
-![Kaplan_Plot](images/kaplan_curves_males.pdf)
+![Kaplan_Plot](images/kaplan_curves_males.png)
 
 Comparing the concordance index values from the models indicated the fully-adjusted OUES models did not statistically differ compared to the fully-adjusted VO<sub>2peak</sub> models. OUES measures also did not complement peak VO<sub>2peak</sub> models. Overall, these findings suggest assessments of OUES may have prognostic utility within apparently healthy males and submaximal determinations of OUES could be valuable when accurate assessment of VO<sub>2peak</sub> is not feasible.
 Following the data analysis, I summarized the findings and submitted the scientific manuscript to the Journal of Cardiopulmonary Rehabilitation and Prevention. The manuscript is currently under peer review by experts in the field.
