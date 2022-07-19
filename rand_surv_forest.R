@@ -17,7 +17,8 @@ data <- read_xlsx(here::here("../CLEANED_OUES_dataset_5_27_2022.xlsx"))
 data <- mutate(data, sex_male = ifelse(sex == "Male", 1, 0))
 
 obj <- rfsrc(Surv(follow_up_yrs, mortality_status) ~ OUES + age + sex_male + record_year +
-               obesity + hypertension + dyslipidemia + diabetes + inactivity + smoker, 
+               obesity + hypertension + dyslipidemia + diabetes + inactivity + smoker +
+               VO2_rel, 
              data = filter(data, sex_male == 0),
              ntree = 100, nodesize = 5, nsplit = 50, importance = TRUE)
 obj

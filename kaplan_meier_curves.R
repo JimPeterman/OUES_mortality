@@ -3,6 +3,12 @@ library(readxl)
 library(dplyr)
 library(survival)
 
+# Using the fun National Parks color palettes.
+# install.packages("devtools")
+# deAvtools::install_github("kevinsblake/NatParksPalettes")
+library(NatParksPalettes)
+
+
 # Creating Kaplan Meier curves to illustrate survival data from study.
 
 data <- read_xlsx(here::here("../CLEANED_OUES_dataset_5_27_2022.xlsx"))
@@ -38,7 +44,8 @@ df_male$OUES_tertile <- ordered(df_male$OUES_tertile, levels = c("Bad", "Ok", "G
 male_plot <- survminer::ggsurvplot(
   fit = survfit(Surv(follow_up_yrs, mortality_status) ~ OUES_tertile, 
                 data=df_male), 
-  palette = c("palegreen3", "dodgerblue3", "indianred"),
+  # palette = c("palegreen3", "dodgerblue3", "indianred"),
+  palette = natparks.pals("Yellowstone"),
   pval = T,
   conf.int = T,
   xlab = "Years", 
@@ -134,7 +141,8 @@ all_plot <- survminer::ggsurvplot(
 male_OUES_plot <- survminer::ggsurvplot(
   fit = survfit(Surv(follow_up_yrs, mortality_status) ~ OUES_tertile, 
                 data=filter(df_OUES, sex == "Male")), 
-  palette = c("skyblue", "skyblue4"),
+  # palette = c("skyblue", "skyblue4"),
+  palette = natparks.pals("Glacier"),
   pval = T,
   conf.int = T,
   xlab = "Years", 
@@ -148,7 +156,8 @@ male_OUES_plot <- survminer::ggsurvplot(
 male_norm_OUES_plot <- survminer::ggsurvplot(
   fit = survfit(Surv(follow_up_yrs, mortality_status) ~ OUES_norm_tertile, 
                 data=filter(df_norm_OUES, sex == "Male")), 
-  palette = c("mediumaquamarine", "forestgreen"),
+  # palette = c("mediumaquamarine", "forestgreen"),
+  palette = natparks.pals("Yellowstone"),
   pval = T,
   conf.int = T,
   xlab = "Years", 
