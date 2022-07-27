@@ -941,6 +941,7 @@ eth_var <- c("ethnicity_asian", "ethnicity_black", "ethnicity_hispanic", "ethnic
 
 # Create percentiles and chi-squared test summary for publication tables.
 # No Chi tests performed on ethnicity data due to very small sample sizes of non-white participants.
+# Error messages added if Chi-sqaure tests have error messages (typically small sampel sizes).
 for(k in 1:length(death_var)){
   
   all_factors <- c(risk_factors, eth_var)
@@ -961,7 +962,18 @@ for(k in 1:length(death_var)){
   for(i in 1:length(all_factors)){
     if(substr(all_factors[i], 1, 9) != "ethnicity"){
       temp_tbl <- table(temp_mor_df$sex, temp_mor_df[[all_factors[i]]])
-      df_summary[i, "Sex_Chi_p"] <- round(chisq.test(temp_tbl)$p.value, 4)
+      
+      chi_with_error_msg <- purrr::quietly(.f = chisq.test)
+      chi_result <- chi_with_error_msg(temp_tbl)
+      # If there's an error, add a symbol to the output.
+      warn_msg <- ifelse(length(chi_result$warnings) > 0, "!!", "")
+      # Print the warning message (and the grouping to identify).
+      if (warn_msg == "!!"){
+        print(paste("Chi Square warning (", var_int[j], ", ", all_factors[i], "): ", 
+                    chi_result$warnings, sep = ""))
+      }
+      df_summary[i, "Sex_Chi_p"] <- paste(round(chi_result$result$p.value, 4), warn_msg)
+      
     }
   }
   
@@ -977,6 +989,9 @@ for(k in 1:length(death_var)){
         temp_df <- filter(temp_mor_df, sex ==  group_type[s])
       }
       
+      # Add in warning symbol when chi square test had error.
+      warn_msg <- ifelse(str_detect(df_summary[i, "Sex_Chi_p"], "!!"), "!!", "")
+      
       # Add in a significance symbol (to femle column) if needed (excluding ethnicity).
       if(group_type[s] == "Female" & df_summary[i, "Sex_Chi_p"] < 0.05 & 
          substr(all_factors[i], 1, 9) != "ethnicity"){
@@ -984,7 +999,8 @@ for(k in 1:length(death_var)){
         if(substr(all_factors[i], 1, 9) != "ethnicity"){
           df_summary[i, group_type[s]] <- 
             paste(sprintf("%.0f", round(sum(temp_df[[all_factors[i]]], na.rm = T) / 
-                                          sum(complete.cases(temp_df[[all_factors[i]]]))*100, digits = 0)), "*")
+                                          sum(complete.cases(temp_df[[all_factors[i]]]))*100, digits = 0)), 
+                  "*", warn_msg)
         } else {
           # Ethnicity rounded to 1 decimal place.
           df_summary[i, group_type[s]] <- 
@@ -996,7 +1012,7 @@ for(k in 1:length(death_var)){
         if(substr(all_factors[i], 1, 9) != "ethnicity"){
           df_summary[i, group_type[s]] <- 
             paste(sprintf("%.0f", round(sum(temp_df[[all_factors[i]]], na.rm = T) / 
-                                          sum(complete.cases(temp_df[[all_factors[i]]]))*100, digits = 0)))
+                                          sum(complete.cases(temp_df[[all_factors[i]]]))*100, digits = 0)), warn_msg)
         } else {
           # Ethnicity rounded to 1 decimal place.
           df_summary[i, group_type[s]] <- 
@@ -1020,7 +1036,19 @@ for(k in 1:length(death_var)){
         }
         
         temp_tbl <- table(df_mor$mortality_status, df_mor[[all_factors[i]]])
-        df_summary[i, paste(group_type[s], "mort_Chi_p", sep="_")] <- round(chisq.test(temp_tbl)$p.value, 4)
+        chi_with_error_msg <- purrr::quietly(.f = chisq.test)
+        chi_result <- chi_with_error_msg(temp_tbl)
+        # If there's an error, add a symbol to the output.
+        warn_msg <- ifelse(length(chi_result$warnings) > 0, "!!", "")
+        # Print the warning message (and the grouping to identify).
+        if (warn_msg == "!!"){
+          print(paste("Chi Square warning (", group_type[s], ",", var_int[j], ", ", 
+                      all_factors[i], "): ", chi_result$warnings, sep = ""))
+        }
+        
+        df_summary[i, paste(group_type[s], "mort_Chi_p", sep="_")] <- 
+          paste(round(chi_result$result$p.value, 4), warn_msg)
+        
       }
     }
   }
@@ -1062,6 +1090,15 @@ for(k in 1:length(death_var)){
         } else {
           df_mor <- filter(df_mor, mortality_status == 1)
           
+          # Add in warning symbol when chi square test had error.
+          # Only need to add to 1 column (adding to deceased summary column).
+          if(group_type[s] == "all"){ 
+            warn_msg <- ifelse(str_detect(df_summary[i, "all_mort_Chi_p"], "!!"), "!!", "")
+          } else if (group_type[s] == "Male") {
+            warn_msg <- ifelse(str_detect(df_summary[i, "Male_mort_Chi_p"], "!!"), "!!", "")
+          } else {
+            warn_msg <- ifelse(str_detect(df_summary[i, "Female_mort_Chi_p"], "!!"), "!!", "")
+          }
           
           # Decide whether a significance symbol needs to be added.
           if(sig_t_test & substr(all_factors[i], 1, 9) != "ethnicity"){
@@ -1069,7 +1106,7 @@ for(k in 1:length(death_var)){
             if(substr(all_factors[i], 1, 9) != "ethnicity"){
               df_summary[i, paste(group_type[s], "Deceased", sep="_")] <- 
                 paste(round(sum(df_mor[[all_factors[i]]], na.rm = T) /
-                              sum(complete.cases(df_mor[[all_factors[i]]]))*100, digits = 0), "*")
+                              sum(complete.cases(df_mor[[all_factors[i]]]))*100, digits = 0), "*", warn_msg)
             } else {
               # Ethnicity rounded to 1 decimal place.
               df_summary[i, paste(group_type[s], "Deceased", sep="_")] <- 
@@ -1081,7 +1118,7 @@ for(k in 1:length(death_var)){
             if(substr(all_factors[i], 1, 9) != "ethnicity"){
               df_summary[i, paste(group_type[s], "Deceased", sep="_")] <- 
                 paste(round(sum(df_mor[[all_factors[i]]], na.rm = T) /
-                              sum(complete.cases(df_mor[[all_factors[i]]]))*100, digits = 0))
+                              sum(complete.cases(df_mor[[all_factors[i]]]))*100, digits = 0), warn_msg)
             } else {
               # Ethnicity rounded to 1 decimal place.
               df_summary[i, paste(group_type[s], "Deceased", sep="_")] <- 
@@ -1099,6 +1136,7 @@ for(k in 1:length(death_var)){
   df_summary[nrow(df_summary), "all_Deceased"] <- paste("* sig diff from those alive (all cohort)")
   df_summary[nrow(df_summary), "Male_Deceased"] <- paste("* sig diff from living males")
   df_summary[nrow(df_summary), "Female_Deceased"] <- paste("* sig diff from living females")
+  df_summary[nrow(df_summary), "all_factors"] <- paste("!! p-value provided but error in Chi square test")
   
   
   # Rename summaries.
