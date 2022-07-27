@@ -157,7 +157,7 @@ male_norm_OUES_plot <- survminer::ggsurvplot(
   fit = survfit(Surv(follow_up_yrs, mortality_status) ~ OUES_norm_tertile, 
                 data=filter(df_norm_OUES, sex == "Male")), 
   # palette = c("mediumaquamarine", "forestgreen"),
-  palette = natparks.pals("Yellowstone"),
+  palette = natparks.pals("Arches2"),
   pval = T,
   conf.int = T,
   xlab = "Years", 
