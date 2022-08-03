@@ -45,6 +45,8 @@ for(i in 1:(length(var_int)+1)){
 # If sex term is sig, then there is a difference in the strength of the relationship
 # between men and women (which is stronger can be seen with HR for sex-specific analysis). 
 
+# "concordance_OUES..." includes comparisons with OUES models (for OUES_norm, OUES_50, OUES_75)
+# "concordance_VO2..." has comparisons with VO2peak models (for all).
 for(p in 1:length(group_type)){
   for(i in 1:length(var_int)){
     for(k in 1:length(death_var)){
@@ -190,7 +192,8 @@ for(p in 1:length(group_type)){
         
         concordance_summary <- data.frame("Model_Comparison" = c("Univariate", "Age, Sex, Test Year", 
                                                                  "Age, Sex, Testing Year, and Risk Factors","","",
-                                                                 paste("Adding", var_int[i], "to Model"),
+                                                                 paste("Adding", var_int[i], "to VO2 Model"),
+                                                                 "","", paste("Adding VO2 to", var_int[i], "Model"),
                                                                  "","","Correlations"))
         colnames(concordance_summary)[1] <- paste(var_int[i], death_var[k], sep = "_")
         
@@ -246,10 +249,41 @@ for(p in 1:length(group_type)){
         
         rm(ctest, dtest, dvar, contr)
         
+        # To fill in new labels for the Variable to VO2+Variable comparisons.
+        concordance_summary[8,2:9] <- c("Contrast", "SD", "Z Score", "p value", paste(var_int[i]),
+                                        paste(var_int[i], "+VO2", "Concordance"), 
+                                        paste(var_int[i], "AIC"), paste(var_int[i], "+VO2", "AIC"))
+        
+        # Comparing the addition of Variable of interest to the Variable+VO2 model.
+        ctest <- concordance(res_cox_multi_3, res_cox_multi_4)
+        contr <- c(-1, 1)
+        dtest <- contr %*% coef(ctest)
+        dvar <- contr %*% vcov(ctest) %*% contr
+        
+        concordance_summary[9,"Contrast"] <- round(dtest, 4)
+        concordance_summary[9,"SD"] <- round(sqrt(dvar), 4)
+        concordance_summary[9,"Z Score"] <- round((dtest/sqrt(dvar)), 2)
+        concordance_summary[9,"p value"] <- round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5)
+        concordance_summary[9,"VO2 Concordance"] <- 
+          sprintf("%.3f", round(res_cox_multi_3$concordance["concordance"], 3))
+        # Add in significance value if VO2+variable of interest model is stronger than just the variable model.
+        sig_sym <- ifelse((round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5) < 0.05), "‡", "")
+        concordance_summary[9,paste(var_int[i], "Concordance")] <- 
+          str_trim(paste(sprintf("%.3f", round(res_cox_multi_4$concordance["concordance"], 3)), sig_sym))
+        concordance_summary[9,"VO2 AIC"] <- sprintf("%.1f", round(AIC(res_cox_multi_3),1))
+        concordance_summary[9,paste(var_int[i], "AIC")] <- sprintf("%.1f", round(AIC(res_cox_multi_4),1))
+        
+        rm(ctest, dtest, dvar, contr)
+        
+        
         # Correlation between variables.
-        concordance_summary[8,2:3] <- c("r", "p-value")
-        concordance_summary[9,2] <- sprintf("%.2f", round(cor(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson"), 2)) 
-        concordance_summary[9,3] <- round(cor.test(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson")$p.value, 5)
+        concordance_summary[11,2:3] <- c("r", "p-value")
+        concordance_summary[12,2] <- sprintf("%.2f", round(cor(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson"), 2)) 
+        concordance_summary[12,3] <- round(cor.test(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson")$p.value, 5)
+        
+        # Add in the description of the significant symbols.
+        concordance_summary[11, 6] <- paste("†: significantly different from", var_int[i])
+        concordance_summary[11, 7] <- paste("‡: combined model significantly different")
         
         assign(paste("concordance_VO2", group_type[p], var_int[i], death_var[k], sep = "_"), concordance_summary)
         
@@ -477,7 +511,8 @@ for(p in 1:length(group_type)){
         
         concordance_summary <- data.frame("Model_Comparison" = c("Univariate", "Age, Test Year", 
                                                                  "Age, Testing Year, and Risk Factors","","",
-                                                                 paste("Adding", var_int[i], "to Model"),
+                                                                 paste("Adding", var_int[i], "to VO2 Model"),
+                                                                 "","", paste("Adding VO2 to", var_int[i], "Model"),
                                                                  "","","Correlations"))
         colnames(concordance_summary)[1] <- paste(var_int[i], death_var[k], sep = "_")
         
@@ -533,10 +568,41 @@ for(p in 1:length(group_type)){
         
         rm(ctest, dtest, dvar, contr)
         
+        # To fill in new labels for the Variable to VO2+Variable comparisons.
+        concordance_summary[8,2:9] <- c("Contrast", "SD", "Z Score", "p value", paste(var_int[i]),
+                                        paste(var_int[i], "+VO2", "Concordance"), 
+                                        paste(var_int[i], "AIC"), paste(var_int[i], "+VO2", "AIC"))
+        
+        # Comparing the addition of Variable of interest to the Variable+VO2 model.
+        ctest <- concordance(res_cox_multi_3, res_cox_multi_4)
+        contr <- c(-1, 1)
+        dtest <- contr %*% coef(ctest)
+        dvar <- contr %*% vcov(ctest) %*% contr
+        
+        concordance_summary[9,"Contrast"] <- round(dtest, 4)
+        concordance_summary[9,"SD"] <- round(sqrt(dvar), 4)
+        concordance_summary[9,"Z Score"] <- round((dtest/sqrt(dvar)), 2)
+        concordance_summary[9,"p value"] <- round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5)
+        concordance_summary[9,"VO2 Concordance"] <- 
+          sprintf("%.3f", round(res_cox_multi_3$concordance["concordance"], 3))
+        # Add in significance value if VO2+variable of interest model is stronger than just the variable model.
+        sig_sym <- ifelse((round(2*pnorm(-abs((dtest/sqrt(dvar)))), 5) < 0.05), "‡", "")
+        concordance_summary[9,paste(var_int[i], "Concordance")] <- 
+          str_trim(paste(sprintf("%.3f", round(res_cox_multi_4$concordance["concordance"], 3)), sig_sym))
+        concordance_summary[9,"VO2 AIC"] <- sprintf("%.1f", round(AIC(res_cox_multi_3),1))
+        concordance_summary[9,paste(var_int[i], "AIC")] <- sprintf("%.1f", round(AIC(res_cox_multi_4),1))
+        
+        rm(ctest, dtest, dvar, contr)
+
+        
         # Correlation between variables.
-        concordance_summary[8,2:3] <- c("r", "p-value")
-        concordance_summary[9,2] <- sprintf("%.2f", round(cor(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson"), 2)) 
-        concordance_summary[9,3] <- round(cor.test(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson")$p.value, 5)
+        concordance_summary[11,2:3] <- c("r", "p-value")
+        concordance_summary[12,2] <- sprintf("%.2f", round(cor(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson"), 2)) 
+        concordance_summary[12,3] <- round(cor.test(temp_df[[var_int[i]]], temp_df$VO2_rel, method = "pearson")$p.value, 5)
+        
+        # Add in the description of the significant symbols.
+        concordance_summary[11, 6] <- paste("†: significantly different from", var_int[i])
+        concordance_summary[11, 7] <- paste("‡: combined model significantly different")
         
         assign(paste("concordance_VO2", group_type[p], var_int[i], death_var[k], sep = "_"), concordance_summary)
         
@@ -1188,7 +1254,7 @@ for(i in 1:length(death_var)){
             "Female_Concord_75" = get(paste("concordance_VO2_Female_OUES_75_", death_var[i], sep=""))
             )
             
-  write_xlsx(y, here::here(paste("../OUES_", death_var[i], "_results_6_9_2022_v2.xlsx", sep="")))
+  write_xlsx(y, here::here(paste("../OUES_", death_var[i], "_results_8_3_2022.xlsx", sep="")))
   
   
 }
