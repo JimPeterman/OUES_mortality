@@ -6,7 +6,7 @@ library(survival)
 library(survminer)
 library(stringr)
 
-data <- read_xlsx(here::here("../CLEANED_OUES_dataset_5_2_2022.xlsx"))
+data <- read_xlsx(here::here("../data/CLEANED_OUES_dataset_5_2_2022.xlsx"))
 
 #######################################################################
 # Cox proportional hazards and Concordance tests.

@@ -11,7 +11,7 @@ library(NatParksPalettes)
 
 # Creating Kaplan Meier curves to illustrate survival data from study.
 
-data <- read_xlsx(here::here("../CLEANED_OUES_dataset_5_27_2022.xlsx"))
+data <- read_xlsx(here::here("../data/CLEANED_OUES_dataset_5_27_2022.xlsx"))
 
 
 ##########################################################################

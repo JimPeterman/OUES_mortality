@@ -6,7 +6,7 @@ library(randomForestSRC)
 
 # Trying out some random survival forest analyses.
 
-data <- read_xlsx(here::here("../CLEANED_OUES_dataset_5_27_2022.xlsx"))
+data <- read_xlsx(here::here("../data/CLEANED_OUES_dataset_5_27_2022.xlsx"))
 
 # data$OUES_tertile <- ordered(data$OUES_tertile, levels = c("Bad", "Ok", "Good"))
 
