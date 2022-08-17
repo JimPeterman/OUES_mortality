@@ -47,9 +47,9 @@ The Kaplan-Meier curves below illustrate the findings from the absolute and norm
 
 ![Kaplan_Plot](images/kaplan_curves_males.png)
 
-Comparing the concordance index values from the models indicated the fully-adjusted OUES models did not statistically differ compared to the fully-adjusted VO<sub>2peak</sub> models. OUES measures also did not complement peak VO<sub>2peak</sub> models. 
+Comparing the concordance index values from the models indicated the fully-adjusted OUES models did not statistically differ compared to the fully-adjusted VO<sub>2peak</sub> models. OUES measures also did not complement VO<sub>2peak</sub> models. 
 Results from the full random survival forest model are illustrated below. Absolute OUES is important for predicting mortality, although the importance is below the traditional variable of interest from cardiopulmonary exercise testing, VO<sub>2peak</sub>.
 
 ![Forest_Plot](images/rand_surv_plot.png)
 
-Overall, these findings suggest assessments of OUES may have prognostic utility within apparently healthy males and submaximal determinations of OUES could be valuable when accurate assessment of VO<sub>2peak</sub> is not feasible. I have summarized these findings and submitted the scientific manuscript to the Journal of Cardiopulmonary Rehabilitation and Prevention. The manuscript is currently under peer review by experts in the field.
+Overall, these findings suggest assessments of OUES may have prognostic utility within apparently healthy males and submaximal determinations of OUES could be valuable when accurate assessment of VO<sub>2peak</sub> is not feasible. I summarized these findings and submitted the manuscript to the Journal of Cardiopulmonary Rehabilitation and Prevention where it was accepted for publication following peer review by experts in the field (link to be added upon official publication).
