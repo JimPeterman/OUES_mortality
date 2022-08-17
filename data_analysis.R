@@ -6,7 +6,7 @@ library(survival)
 library(survminer)
 library(stringr)
 
-data <- read_xlsx(here::here("../CLEANED_OUES_dataset_5_27_2022.xlsx"))
+data <- read_xlsx(here::here("../data/CLEANED_OUES_dataset_5_27_2022.xlsx"))
 
 # Require complete data for the submax OUES variables.
 data <- data[complete.cases(data[,c("OUES_50", "OUES_75")]),]
@@ -1254,7 +1254,7 @@ for(i in 1:length(death_var)){
             "Female_Concord_75" = get(paste("concordance_VO2_Female_OUES_75_", death_var[i], sep=""))
             )
             
-  write_xlsx(y, here::here(paste("../OUES_", death_var[i], "_results_8_3_2022.xlsx", sep="")))
+  write_xlsx(y, here::here(paste("../data/OUES_", death_var[i], "_results_8_3_2022.xlsx", sep="")))
   
   
 }

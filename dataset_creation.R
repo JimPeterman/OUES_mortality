@@ -12,7 +12,7 @@ library(dplyr)
 library(writexl)
 library(FRIENDanalysis)
 
-data <- read_excel(here::here("../BALLST_healthy_cohort_dataset.xlsx"))
+data <- read_excel(here::here("../data/BALLST_healthy_cohort_dataset.xlsx"))
 
 
 ###########################################################################################
@@ -127,7 +127,7 @@ data <- data %>%
 # For the MINUTE dataset:
 # Searched for something (*) in rel VO2 column of minute columns in FileMaker.
 # Data downloaded using the "Export Minutes" button (10/4/2021).
-data_min_all <- read_excel(here::here("../FileMaker Minutes Download_10_13_2021.xlsx"),
+data_min_all <- read_excel(here::here("../data/FileMaker Minutes Download_10_13_2021.xlsx"),
                            na = "?")
 
 # Rename the two key column labels used to sort.
