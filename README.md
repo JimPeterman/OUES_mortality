@@ -52,4 +52,4 @@ Results from the full random survival forest model are illustrated below. Absolu
 
 ![Forest_Plot](images/rand_surv_plot.png)
 
-Overall, these findings suggest assessments of OUES may have prognostic utility within apparently healthy males and submaximal determinations of OUES could be valuable when accurate assessment of VO<sub>2peak</sub> is not feasible. I summarized these findings and submitted the manuscript to the Journal of Cardiopulmonary Rehabilitation and Prevention where it was accepted for publication following peer review by experts in the field (link to be added upon official publication).
+Overall, these findings suggest assessments of OUES may have prognostic utility within apparently healthy males and submaximal determinations of OUES could be valuable when accurate assessment of VO<sub>2peak</sub> is not feasible. I summarized these findings and submitted the manuscript to the Journal of Cardiopulmonary Rehabilitation and Prevention where it was accepted for publication following peer review by experts in the field ([link to publication](https://pubmed.ncbi.nlm.nih.gov/36394515/)).
